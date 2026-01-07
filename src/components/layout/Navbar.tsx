@@ -1,19 +1,20 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, User, LogOut } from "lucide-react";
+import { Menu, X, Search, User, LogOut, ShoppingCart, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
-import { supabase } from "@/integrations/supabase/client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/contexts/CartContext";
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
   { href: "/events", label: "Events" },
   { href: "/books", label: "Books" },
-  { href: "/blog", label: "Blog" },
+  { href: "/gallery", label: "Gallery" },
   { href: "/testimonials", label: "Testimonials" },
+  { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -21,14 +22,13 @@ export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const { user, isAdmin, signOut } = useAuth();
+  const { itemCount } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -36,20 +36,6 @@ export const Navbar = () => {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -63,7 +49,7 @@ export const Navbar = () => {
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate("/");
   };
 
@@ -81,7 +67,6 @@ export const Navbar = () => {
       >
         <nav className="container-wide">
           <div className="flex items-center justify-between h-20">
-            {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
               <span className="text-2xl font-heading font-bold tracking-tight">
                 MIND<span className="text-primary">.</span>
@@ -91,7 +76,6 @@ export const Navbar = () => {
               </span>
             </Link>
 
-            {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-6">
               {navLinks.map((link) => (
                 <Link
@@ -108,23 +92,31 @@ export const Navbar = () => {
               ))}
             </div>
 
-            {/* CTA Buttons */}
             <div className="hidden lg:flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSearchOpen(true)}
-                className="text-muted-foreground hover:text-foreground"
-              >
+              <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)} className="text-muted-foreground hover:text-foreground">
                 <Search className="w-5 h-5" />
+              </Button>
+
+              <Button variant="ghost" size="icon" className="relative" asChild>
+                <Link to="/cart">
+                  <ShoppingCart className="w-5 h-5" />
+                  {itemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                      {itemCount}
+                    </span>
+                  )}
+                </Link>
               </Button>
 
               {user ? (
                 <>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link to="/admin"><LayoutDashboard className="w-5 h-5" /></Link>
+                    </Button>
+                  )}
                   <Button variant="ghost" size="icon" asChild>
-                    <Link to="/profile">
-                      <User className="w-5 h-5" />
-                    </Link>
+                    <Link to="/dashboard"><User className="w-5 h-5" /></Link>
                   </Button>
                   <Button variant="ghost" size="icon" onClick={handleSignOut}>
                     <LogOut className="w-5 h-5" />
@@ -137,24 +129,25 @@ export const Navbar = () => {
               )}
 
               <Button variant="gold" size="sm" asChild>
-                <Link to="/contact">Book Consultation</Link>
+                <Link to="/consultation">Book Consultation</Link>
               </Button>
             </div>
 
-            {/* Mobile Menu Toggle */}
             <div className="flex items-center gap-2 lg:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsSearchOpen(true)}
-              >
+              <Button variant="ghost" size="icon" className="relative" asChild>
+                <Link to="/cart">
+                  <ShoppingCart className="w-5 h-5" />
+                  {itemCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-primary-foreground text-[10px] rounded-full flex items-center justify-center">
+                      {itemCount}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(true)}>
                 <Search className="w-5 h-5" />
               </Button>
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="p-2 text-foreground hover:text-primary transition-colors"
-                aria-label="Toggle menu"
-              >
+              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-foreground hover:text-primary transition-colors" aria-label="Toggle menu">
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
@@ -162,58 +155,41 @@ export const Navbar = () => {
         </nav>
       </motion.header>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 lg:hidden"
-          >
-            <div
-              className="absolute inset-0 bg-background/95 backdrop-blur-md"
-              onClick={() => setIsMobileMenuOpen(false)}
-            />
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="fixed inset-0 z-40 lg:hidden">
+            <div className="absolute inset-0 bg-background/95 backdrop-blur-md" onClick={() => setIsMobileMenuOpen(false)} />
             <nav className="relative pt-24 px-6">
               <div className="flex flex-col gap-4">
                 {navLinks.map((link, index) => (
-                  <motion.div
-                    key={link.href}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Link
-                      to={link.href}
-                      className={`block text-2xl font-heading py-2 ${
-                        location.pathname === link.href
-                          ? "text-primary"
-                          : "text-foreground"
-                      }`}
-                    >
+                  <motion.div key={link.href} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+                    <Link to={link.href} className={`block text-2xl font-heading py-2 ${location.pathname === link.href ? "text-primary" : "text-foreground"}`}>
                       {link.label}
                     </Link>
                   </motion.div>
                 ))}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: navLinks.length * 0.1 }}
-                  className="mt-4 space-y-3"
-                >
+                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: navLinks.length * 0.1 }} className="mt-4 space-y-3">
                   {user ? (
-                    <Button variant="goldOutline" size="lg" className="w-full" onClick={handleSignOut}>
-                      Sign Out
-                    </Button>
+                    <>
+                      <Button variant="goldOutline" size="lg" className="w-full" asChild>
+                        <Link to="/dashboard">My Dashboard</Link>
+                      </Button>
+                      {isAdmin && (
+                        <Button variant="outline" size="lg" className="w-full" asChild>
+                          <Link to="/admin">Admin Dashboard</Link>
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="lg" className="w-full" onClick={handleSignOut}>
+                        Sign Out
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="goldOutline" size="lg" className="w-full" asChild>
                       <Link to="/auth">Sign In</Link>
                     </Button>
                   )}
                   <Button variant="gold" size="lg" className="w-full" asChild>
-                    <Link to="/contact">Book Consultation</Link>
+                    <Link to="/consultation">Book Consultation</Link>
                   </Button>
                 </motion.div>
               </div>
@@ -222,7 +198,6 @@ export const Navbar = () => {
         )}
       </AnimatePresence>
 
-      {/* Global Search */}
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
