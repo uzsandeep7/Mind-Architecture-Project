@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
   Crown,
   Check,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { EventCheckoutModal } from "@/components/checkout/EventCheckoutModal";
 
 interface Event {
   id: number;
@@ -131,6 +132,7 @@ const calculateTimeLeft = (eventDate: Date) => {
 const EventDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const event = allEvents.find((e) => e.id === Number(id));
+  const [showCheckout, setShowCheckout] = useState(false);
   const [timeLeft, setTimeLeft] = useState(
     event ? calculateTimeLeft(event.date) : { days: 0, hours: 0, minutes: 0, seconds: 0 }
   );
@@ -304,13 +306,31 @@ const EventDetailPage = () => {
                     </div>
                   </div>
 
-                  <Button variant="gold" size="lg" className="w-full mb-3">
+                  <Button
+                    variant="gold"
+                    size="lg"
+                    className="w-full mb-3"
+                    onClick={() => setShowCheckout(true)}
+                  >
                     Book Now - ${event.price}
                   </Button>
                   <Button variant="outline" size="sm" className="w-full">
                     <Share2 className="w-4 h-4 mr-2" />
                     Share Event
                   </Button>
+
+                  <EventCheckoutModal
+                    open={showCheckout}
+                    onOpenChange={setShowCheckout}
+                    event={{
+                      title: event.title,
+                      date: event.date,
+                      venue: event.venue,
+                      price: event.price,
+                      memberPrice: event.memberPrice,
+                      availableSeats: event.availableSeats,
+                    }}
+                  />
                 </div>
 
                 {/* Event Details */}

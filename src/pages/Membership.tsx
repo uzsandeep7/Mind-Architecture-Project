@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   FileText,
   Video,
 } from "lucide-react";
+import { SubscriptionCheckoutModal } from "@/components/checkout/SubscriptionCheckoutModal";
 
 const freeFeatures = [
   { text: "User registration & login", included: true },
@@ -94,7 +96,25 @@ const faqs = [
   },
 ];
 
+const premiumPlan = {
+  name: "Premium",
+  price: 29,
+  features: [
+    "Full mindset program access",
+    "Progress tracking",
+    "Group coaching (live + recordings)",
+    "Community access: commenting, discussions",
+    "Limited messaging",
+    "Private journaling & notes",
+    "Event priority & waitlist access",
+    "Member-only discounts on events & books",
+    "Exclusive premium content",
+  ],
+};
+
 const MembershipPage = () => {
+  const [showCheckout, setShowCheckout] = useState(false);
+
   return (
     <Layout>
       {/* Header Section */}
@@ -206,11 +226,22 @@ const MembershipPage = () => {
                 })}
               </div>
 
-              <Button variant="gold" size="lg" className="w-full">
+              <Button
+                variant="gold"
+                size="lg"
+                className="w-full"
+                onClick={() => setShowCheckout(true)}
+              >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Upgrade to Premium
               </Button>
             </motion.div>
+
+            <SubscriptionCheckoutModal
+              open={showCheckout}
+              onOpenChange={setShowCheckout}
+              plan={premiumPlan}
+            />
           </div>
         </div>
       </section>
@@ -367,7 +398,7 @@ const MembershipPage = () => {
             <p className="text-cream/70 mb-8">
               Join thousands of members who are transforming their mindset and achieving extraordinary results.
             </p>
-            <Button variant="gold" size="lg">
+            <Button variant="gold" size="lg" onClick={() => setShowCheckout(true)}>
               <Crown className="w-5 h-5 mr-2" />
               Get Premium Access
             </Button>
