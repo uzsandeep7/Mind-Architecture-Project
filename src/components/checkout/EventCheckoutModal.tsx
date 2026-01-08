@@ -28,14 +28,21 @@ interface EventCheckoutModalProps {
   isMember?: boolean;
 }
 
+interface Attendee {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 export const EventCheckoutModal = ({
   open,
   onOpenChange,
   event,
   isMember = false,
 }: EventCheckoutModalProps) => {
-  const [step, setStep] = useState<"details" | "payment">("details");
+  const [step, setStep] = useState<"details" | "attendees" | "payment">("details");
   const [seats, setSeats] = useState(1);
+  const [attendees, setAttendees] = useState<Attendee[]>([{ name: "", email: "", phone: "" }]);
   const [paymentMethod, setPaymentMethod] = useState<"paypal" | "card">("card");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -46,6 +53,26 @@ export const EventCheckoutModal = ({
     nameOnCard: "",
     billingEmail: "",
   });
+
+  // Update attendees array when seats change
+  const handleSeatsChange = (newSeats: number) => {
+    setSeats(newSeats);
+    const newAttendees = [...attendees];
+    if (newSeats > attendees.length) {
+      for (let i = attendees.length; i < newSeats; i++) {
+        newAttendees.push({ name: "", email: "", phone: "" });
+      }
+    } else {
+      newAttendees.splice(newSeats);
+    }
+    setAttendees(newAttendees);
+  };
+
+  const updateAttendee = (index: number, field: keyof Attendee, value: string) => {
+    const newAttendees = [...attendees];
+    newAttendees[index] = { ...newAttendees[index], [field]: value };
+    setAttendees(newAttendees);
+  };
 
   const pricePerSeat = isMember ? event.memberPrice : event.price;
   const subtotal = pricePerSeat * seats;
@@ -64,6 +91,7 @@ export const EventCheckoutModal = ({
   const handleClose = () => {
     setStep("details");
     setSeats(1);
+    setAttendees([{ name: "", email: "", phone: "" }]);
     setPaymentMethod("card");
     setCardDetails({
       cardNumber: "",
@@ -81,17 +109,17 @@ export const EventCheckoutModal = ({
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {step === "payment" && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mr-2"
-                  onClick={() => setStep("details")}
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              )}
-              {step === "details" ? "Book Your Seat" : "Payment Details"}
+            {(step === "attendees" || step === "payment") && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mr-2"
+                onClick={() => setStep(step === "payment" ? "attendees" : "details")}
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
+            {step === "details" ? "Book Your Seat" : step === "attendees" ? "Attendee Details" : "Payment Details"}
             </DialogTitle>
           </DialogHeader>
 
@@ -139,7 +167,7 @@ export const EventCheckoutModal = ({
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => setSeats((s) => Math.max(1, s - 1))}
+                      onClick={() => handleSeatsChange(Math.max(1, seats - 1))}
                       disabled={seats <= 1}
                     >
                       <Minus className="w-4 h-4" />
@@ -150,7 +178,7 @@ export const EventCheckoutModal = ({
                       max={event.availableSeats}
                       value={seats}
                       onChange={(e) =>
-                        setSeats(
+                        handleSeatsChange(
                           Math.min(
                             Math.max(1, parseInt(e.target.value) || 1),
                             event.availableSeats
@@ -163,7 +191,7 @@ export const EventCheckoutModal = ({
                       variant="outline"
                       size="icon"
                       onClick={() =>
-                        setSeats((s) => Math.min(event.availableSeats, s + 1))
+                        handleSeatsChange(Math.min(event.availableSeats, seats + 1))
                       }
                       disabled={seats >= event.availableSeats}
                     >
@@ -190,6 +218,87 @@ export const EventCheckoutModal = ({
                     <span>${taxes.toFixed(2)}</span>
                   </div>
                   <div className="border-t border-border pt-3 flex justify-between font-bold">
+                    <span>Total</span>
+                    <span className="text-primary">${total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <Button
+                  variant="gold"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setStep("attendees")}
+                >
+                  Continue to Attendee Details
+                </Button>
+              </motion.div>
+            )}
+
+            {step === "attendees" && (
+              <motion.div
+                key="attendees"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-6"
+              >
+                <p className="text-sm text-muted-foreground">
+                  Please provide details for each attendee
+                </p>
+                
+                <div className="space-y-6 max-h-[300px] overflow-y-auto pr-2">
+                  {attendees.map((attendee, index) => (
+                    <div key={index} className="bg-secondary/30 rounded-xl p-4 space-y-4">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        Attendee {index + 1}
+                      </h4>
+                      <div className="grid gap-4">
+                        <div>
+                          <Label htmlFor={`name-${index}`}>Full Name *</Label>
+                          <Input
+                            id={`name-${index}`}
+                            placeholder="John Doe"
+                            value={attendee.name}
+                            onChange={(e) => updateAttendee(index, "name", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`email-${index}`}>Email *</Label>
+                          <Input
+                            id={`email-${index}`}
+                            type="email"
+                            placeholder="john@example.com"
+                            value={attendee.email}
+                            onChange={(e) => updateAttendee(index, "email", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`phone-${index}`}>Phone</Label>
+                          <Input
+                            id={`phone-${index}`}
+                            type="tel"
+                            placeholder="+1 234 567 8900"
+                            value={attendee.phone}
+                            onChange={(e) => updateAttendee(index, "phone", e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Summary */}
+                <div className="bg-card rounded-xl border border-border p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{seats} attendee(s)</span>
+                    <span>${subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Taxes (10%)</span>
+                    <span>${taxes.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t border-border pt-2 flex justify-between font-bold">
                     <span>Total</span>
                     <span className="text-primary">${total.toFixed(2)}</span>
                   </div>
