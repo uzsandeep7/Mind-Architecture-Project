@@ -1,9 +1,11 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Star, Filter, Search, BookOpen, Headphones, FileText } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ShoppingCart, Star, Filter, Search, BookOpen, Headphones, FileText, Crown, Lock } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 
 interface Book {
   id: number;
@@ -11,12 +13,14 @@ interface Book {
   subtitle: string;
   description: string;
   price: number;
+  memberPrice: number;
   rating: number;
   reviewCount: number;
   format: string[];
   coverUrl: string;
   category: string;
   bestseller?: boolean;
+  isPremiumOnly?: boolean;
 }
 
 const allBooks: Book[] = [
@@ -26,6 +30,7 @@ const allBooks: Book[] = [
     subtitle: "Building the Foundation of Success",
     description: "The definitive guide to restructuring your mental frameworks for lasting success. Learn the principles that have transformed over 50,000 lives.",
     price: 29.99,
+    memberPrice: 22.49,
     rating: 4.9,
     reviewCount: 1247,
     format: ["Hardcover", "Paperback", "Digital", "Audiobook"],
@@ -39,6 +44,7 @@ const allBooks: Book[] = [
     subtitle: "5 Steps to Transform Your Life",
     description: "A practical, step-by-step framework for breaking through limiting beliefs and achieving extraordinary results.",
     price: 24.99,
+    memberPrice: 18.74,
     rating: 4.8,
     reviewCount: 892,
     format: ["Paperback", "Digital", "Audiobook"],
@@ -51,11 +57,13 @@ const allBooks: Book[] = [
     subtitle: "Thriving Through Adversity",
     description: "Discover how to build unshakeable mental resilience and turn life's challenges into opportunities for growth.",
     price: 27.99,
+    memberPrice: 20.99,
     rating: 4.7,
     reviewCount: 654,
     format: ["Hardcover", "Digital"],
     coverUrl: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400",
     category: "Mental Health",
+    isPremiumOnly: true,
   },
   {
     id: 4,
@@ -63,6 +71,7 @@ const allBooks: Book[] = [
     subtitle: "The Inner Game of Great Leaders",
     description: "Master the internal dynamics that separate good leaders from truly exceptional ones.",
     price: 32.99,
+    memberPrice: 24.74,
     rating: 4.9,
     reviewCount: 423,
     format: ["Hardcover", "Digital", "Audiobook"],
@@ -76,6 +85,7 @@ const allBooks: Book[] = [
     subtitle: "Mastering Attention in a Distracted World",
     description: "Practical strategies for developing laser-like focus and maximizing your productivity.",
     price: 22.99,
+    memberPrice: 17.24,
     rating: 4.6,
     reviewCount: 567,
     format: ["Paperback", "Digital"],
@@ -88,11 +98,13 @@ const allBooks: Book[] = [
     subtitle: "The Key to Personal and Professional Success",
     description: "Unlock the power of emotional intelligence to enhance every relationship and achieve your goals.",
     price: 26.99,
+    memberPrice: 20.24,
     rating: 4.8,
     reviewCount: 789,
     format: ["Hardcover", "Paperback", "Digital"],
     coverUrl: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400",
     category: "Personal Development",
+    isPremiumOnly: true,
   },
 ];
 
@@ -111,7 +123,7 @@ const BookCard = ({ book, index }: { book: Book; index: number }) => {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border"
+      className="group bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border relative"
     >
       <div className="relative h-64 overflow-hidden">
         <img
@@ -119,13 +131,19 @@ const BookCard = ({ book, index }: { book: Book; index: number }) => {
           alt={book.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        {book.bestseller && (
-          <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+          {book.bestseller && (
             <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
               Bestseller
             </span>
-          </div>
-        )}
+          )}
+          {book.isPremiumOnly && (
+            <span className="px-3 py-1 bg-amber-500 text-black text-xs font-semibold rounded-full flex items-center gap-1">
+              <Crown className="w-3 h-3" />
+              Premium Only
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="p-6">
@@ -164,11 +182,28 @@ const BookCard = ({ book, index }: { book: Book; index: number }) => {
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-border">
-          <p className="text-2xl font-heading font-bold">${book.price}</p>
-          <Button variant="gold" size="sm">
-            <ShoppingCart size={14} />
-            Add to Cart
-          </Button>
+          <div>
+            <p className="text-sm font-heading line-through text-muted-foreground">
+              ${book.price}
+            </p>
+            <p className="text-xl font-heading font-bold text-primary flex items-center gap-1">
+              <Crown className="w-4 h-4" />
+              ${book.memberPrice}
+            </p>
+          </div>
+          {book.isPremiumOnly ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/membership">
+                <Lock size={14} className="mr-1" />
+                Unlock
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="gold" size="sm">
+              <ShoppingCart size={14} />
+              Add to Cart
+            </Button>
+          )}
         </div>
       </div>
     </motion.div>
@@ -207,6 +242,21 @@ const BooksPage = () => {
               you build the mindset for success.
             </p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Member Pricing Banner */}
+      <section className="py-4 bg-primary/10 border-b border-primary/20">
+        <div className="container-wide">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Crown className="w-4 h-4 text-primary" />
+            <span>
+              <strong className="text-primary">Premium Members</strong> save up to 25% on all books
+            </span>
+            <Link to="/membership" className="text-primary underline hover:no-underline ml-2">
+              Learn more →
+            </Link>
+          </div>
         </div>
       </section>
 

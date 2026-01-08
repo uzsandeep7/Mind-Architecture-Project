@@ -15,7 +15,9 @@ const navLinks = [
   { href: "/gallery", label: "Gallery" },
   { href: "/testimonials", label: "Testimonials" },
   { href: "/blog", label: "Blog" },
+  { href: "/membership", label: "Membership" },
   { href: "/contact", label: "Contact" },
+  { href: "/admin", label: "Admin" },
 ];
 
 export const Navbar = () => {
