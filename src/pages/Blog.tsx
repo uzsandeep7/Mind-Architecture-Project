@@ -5,7 +5,7 @@ import { Layout } from "@/components/layout/Layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, Heart, MessageCircle, Search, Filter } from "lucide-react";
+import { Clock, Heart, MessageCircle, Search, Filter, Crown, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface BlogPost {
@@ -18,6 +18,7 @@ interface BlogPost {
   tags: string[] | null;
   published_at: string | null;
   created_at: string;
+  isPremiumOnly?: boolean;
 }
 
 // Mock data for initial display
@@ -32,6 +33,7 @@ const mockPosts: BlogPost[] = [
     tags: ["Mindset", "Growth"],
     published_at: "2026-01-05",
     created_at: "2026-01-05",
+    isPremiumOnly: false,
   },
   {
     id: "2",
@@ -43,6 +45,7 @@ const mockPosts: BlogPost[] = [
     tags: ["Leadership", "Business"],
     published_at: "2026-01-02",
     created_at: "2026-01-02",
+    isPremiumOnly: true,
   },
   {
     id: "3",
@@ -54,6 +57,7 @@ const mockPosts: BlogPost[] = [
     tags: ["Habits", "Productivity"],
     published_at: "2025-12-28",
     created_at: "2025-12-28",
+    isPremiumOnly: false,
   },
   {
     id: "4",
@@ -65,6 +69,7 @@ const mockPosts: BlogPost[] = [
     tags: ["Psychology", "Motivation"],
     published_at: "2025-12-20",
     created_at: "2025-12-20",
+    isPremiumOnly: true,
   },
   {
     id: "5",
@@ -76,6 +81,7 @@ const mockPosts: BlogPost[] = [
     tags: ["Mindfulness", "Wellness"],
     published_at: "2025-12-15",
     created_at: "2025-12-15",
+    isPremiumOnly: false,
   },
   {
     id: "6",
@@ -87,6 +93,7 @@ const mockPosts: BlogPost[] = [
     tags: ["Mindset", "Personal Growth"],
     published_at: "2025-12-10",
     created_at: "2025-12-10",
+    isPremiumOnly: true,
   },
 ];
 
@@ -149,6 +156,21 @@ const Blog = () => {
         </div>
       </section>
 
+      {/* Premium Content Banner */}
+      <section className="py-4 bg-primary/10 border-b border-primary/20">
+        <div className="container-wide">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Crown className="w-4 h-4 text-primary" />
+            <span>
+              <strong className="text-primary">Premium Members</strong> get exclusive access to in-depth articles
+            </span>
+            <Link to="/membership" className="text-primary underline hover:no-underline ml-2">
+              Become a member →
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Filters */}
       <section className="py-8 border-b border-border sticky top-20 z-30 bg-background/95 backdrop-blur-md">
         <div className="container-wide">
@@ -205,15 +227,23 @@ const Blog = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.05 }}
                   viewport={{ once: true }}
-                  className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl"
+                  className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl relative"
                 >
                   <Link to={`/blog/${post.slug}`}>
-                    <div className="aspect-video overflow-hidden bg-muted">
+                    <div className="aspect-video overflow-hidden bg-muted relative">
                       <img
                         src={post.cover_image_url || "/placeholder.svg"}
                         alt={post.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
+                      {post.isPremiumOnly && (
+                        <div className="absolute top-4 right-4">
+                          <Badge className="bg-amber-500 text-black">
+                            <Crown className="w-3 h-3 mr-1" />
+                            Premium
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </Link>
                   <div className="p-6">
@@ -237,15 +267,22 @@ const Blog = () => {
                         <Clock className="w-4 h-4" />
                         {post.read_time_minutes || 5} min read
                       </span>
-                      <span>
-                        {post.published_at
-                          ? new Date(post.published_at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
-                            })
-                          : ""}
-                      </span>
+                      {post.isPremiumOnly ? (
+                        <span className="flex items-center gap-1 text-primary">
+                          <Lock className="w-4 h-4" />
+                          Members Only
+                        </span>
+                      ) : (
+                        <span>
+                          {post.published_at
+                            ? new Date(post.published_at).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : ""}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </motion.article>

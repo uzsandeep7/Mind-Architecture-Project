@@ -1,9 +1,11 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Clock, Users, Filter, Search, ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Calendar, MapPin, Clock, Users, Filter, Search, ArrowRight, Crown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 
 interface Event {
   id: number;
@@ -13,10 +15,12 @@ interface Event {
   venue: string;
   city: string;
   price: number;
+  memberPrice: number;
   totalSeats: number;
   availableSeats: number;
   imageUrl: string;
   category: string;
+  isPremiumOnly: boolean;
 }
 
 const allEvents: Event[] = [
@@ -28,10 +32,12 @@ const allEvents: Event[] = [
     venue: "Melbourne Convention Centre",
     city: "Melbourne",
     price: 299,
+    memberPrice: 209,
     totalSeats: 500,
     availableSeats: 127,
     imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     category: "Masterclass",
+    isPremiumOnly: false,
   },
   {
     id: 2,
@@ -41,10 +47,12 @@ const allEvents: Event[] = [
     venue: "Sydney Opera House",
     city: "Sydney",
     price: 599,
+    memberPrice: 419,
     totalSeats: 300,
     availableSeats: 89,
     imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800",
     category: "Intensive",
+    isPremiumOnly: true,
   },
   {
     id: 3,
@@ -54,10 +62,12 @@ const allEvents: Event[] = [
     venue: "Brisbane Exhibition Centre",
     city: "Brisbane",
     price: 449,
+    memberPrice: 314,
     totalSeats: 200,
     availableSeats: 156,
     imageUrl: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800",
     category: "Corporate",
+    isPremiumOnly: false,
   },
   {
     id: 4,
@@ -67,10 +77,12 @@ const allEvents: Event[] = [
     venue: "Perth Convention Centre",
     city: "Perth",
     price: 349,
+    memberPrice: 244,
     totalSeats: 150,
     availableSeats: 78,
     imageUrl: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800",
     category: "Workshop",
+    isPremiumOnly: false,
   },
   {
     id: 5,
@@ -80,10 +92,12 @@ const allEvents: Event[] = [
     venue: "Gold Coast Retreat Centre",
     city: "Gold Coast",
     price: 899,
+    memberPrice: 629,
     totalSeats: 50,
     availableSeats: 12,
     imageUrl: "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800",
     category: "Retreat",
+    isPremiumOnly: true,
   },
   {
     id: 6,
@@ -93,10 +107,12 @@ const allEvents: Event[] = [
     venue: "Adelaide Convention Centre",
     city: "Adelaide",
     price: 399,
+    memberPrice: 279,
     totalSeats: 250,
     availableSeats: 198,
     imageUrl: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800",
     category: "Forum",
+    isPremiumOnly: false,
   },
 ];
 
@@ -129,39 +145,49 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className="group bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border"
     >
-      <div className="relative h-56 overflow-hidden">
-        <img
-          src={event.imageUrl}
-          alt={event.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-dark/80 to-transparent" />
-        <div className="absolute top-4 left-4">
-          <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-            {event.category}
-          </span>
-        </div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="grid grid-cols-4 gap-2">
-            {[
-              { value: timeLeft.days, label: "Days" },
-              { value: timeLeft.hours, label: "Hrs" },
-              { value: timeLeft.minutes, label: "Min" },
-              { value: timeLeft.seconds, label: "Sec" },
-            ].map((item, i) => (
-              <div key={i} className="text-center bg-dark/60 backdrop-blur-sm rounded-md py-1.5">
-                <p className="text-xl font-bold text-cream">{item.value}</p>
-                <p className="text-[10px] text-cream/60 uppercase">{item.label}</p>
-              </div>
-            ))}
+      <Link to={`/events/${event.id}`}>
+        <div className="relative h-56 overflow-hidden">
+          <img
+            src={event.imageUrl}
+            alt={event.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-dark/80 to-transparent" />
+          <div className="absolute top-4 left-4 flex gap-2">
+            <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
+              {event.category}
+            </span>
+            {event.isPremiumOnly && (
+              <span className="px-3 py-1 bg-amber-500 text-black text-xs font-semibold rounded-full flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                Premium
+              </span>
+            )}
+          </div>
+          <div className="absolute bottom-4 left-4 right-4">
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { value: timeLeft.days, label: "Days" },
+                { value: timeLeft.hours, label: "Hrs" },
+                { value: timeLeft.minutes, label: "Min" },
+                { value: timeLeft.seconds, label: "Sec" },
+              ].map((item, i) => (
+                <div key={i} className="text-center bg-dark/60 backdrop-blur-sm rounded-md py-1.5">
+                  <p className="text-xl font-bold text-cream">{item.value}</p>
+                  <p className="text-[10px] text-cream/60 uppercase">{item.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </Link>
 
       <div className="p-6">
-        <h3 className="text-xl font-heading font-bold mb-2 group-hover:text-primary transition-colors">
-          {event.title}
-        </h3>
+        <Link to={`/events/${event.id}`}>
+          <h3 className="text-xl font-heading font-bold mb-2 group-hover:text-primary transition-colors">
+            {event.title}
+          </h3>
+        </Link>
         <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{event.description}</p>
 
         <div className="space-y-2 mb-4">
@@ -207,13 +233,21 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
         </div>
 
         <div className="flex items-center justify-between pt-4 border-t border-border">
-          <p className="text-2xl font-heading font-bold">
-            ${event.price}
-            <span className="text-sm font-body text-muted-foreground">/person</span>
-          </p>
-          <Button variant="gold" size="sm">
-            Book Now
-            <ArrowRight size={14} />
+          <div>
+            <p className="text-lg font-heading font-bold line-through text-muted-foreground">
+              ${event.price}
+            </p>
+            <p className="text-xl font-heading font-bold text-primary flex items-center gap-1">
+              <Crown className="w-4 h-4" />
+              ${event.memberPrice}
+              <span className="text-xs font-body text-muted-foreground">/member</span>
+            </p>
+          </div>
+          <Button variant="gold" size="sm" asChild>
+            <Link to={`/events/${event.id}`}>
+              View Details
+              <ArrowRight size={14} />
+            </Link>
           </Button>
         </div>
       </div>
@@ -255,6 +289,21 @@ const EventsPage = () => {
               change in an immersive, high-energy environment.
             </p>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Member Pricing Banner */}
+      <section className="py-4 bg-primary/10 border-b border-primary/20">
+        <div className="container-wide">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Crown className="w-4 h-4 text-primary" />
+            <span>
+              <strong className="text-primary">Premium Members</strong> save up to 30% on all events
+            </span>
+            <Link to="/membership" className="text-primary underline hover:no-underline ml-2">
+              Learn more →
+            </Link>
+          </div>
         </div>
       </section>
 
