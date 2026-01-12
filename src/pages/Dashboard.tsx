@@ -5,11 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Package, MessageSquare, User, LogOut, Settings, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Calendar, Package, MessageSquare, User, LogOut, Settings, ShoppingBag, Phone } from "lucide-react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -53,144 +51,79 @@ interface Profile {
   avatar_url: string | null;
 }
 
+// Mock data for frontend design purposes
+const mockEventBookings: EventBooking[] = [
+  {
+    id: "1",
+    seats: 2,
+    status: "confirmed",
+    total_amount: 199.98,
+    created_at: new Date().toISOString(),
+    event: { title: "Resilience Leadership Workshop", date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), venue: "Sydney Convention Centre" }
+  },
+  {
+    id: "2",
+    seats: 1,
+    status: "pending",
+    total_amount: 149.99,
+    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    event: { title: "Mind Architecture Masterclass", date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), venue: "Melbourne Business Hub" }
+  }
+];
+
+const mockOrders: Order[] = [
+  {
+    id: "ORD12345",
+    status: "delivered",
+    total_amount: 54.98,
+    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    order_items: [
+      { quantity: 1, price: 29.99, book: { title: "Mind Architecture" } },
+      { quantity: 1, price: 24.99, book: { title: "The Breakthrough Blueprint" } }
+    ]
+  }
+];
+
+const mockConsultations: Consultation[] = [
+  {
+    id: "1",
+    date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+    topic: "Executive Burnout Recovery",
+    status: "confirmed",
+    created_at: new Date().toISOString()
+  }
+];
+
+const mockProfile: Profile = {
+  full_name: "Sarah Johnson",
+  avatar_url: null
+};
+
 const DashboardPage = () => {
-  const { user, signOut, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [eventBookings, setEventBookings] = useState<EventBooking[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [profile, setProfile] = useState<Profile | null>(mockProfile);
+  const [eventBookings, setEventBookings] = useState<EventBooking[]>(mockEventBookings);
+  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [consultations, setConsultations] = useState<Consultation[]>(mockConsultations);
   const [isSaving, setIsSaving] = useState(false);
-  const [fullName, setFullName] = useState("");
-
-  useEffect(() => {
-    if (!isLoading && !user) {
-      navigate("/auth");
-    }
-  }, [user, isLoading, navigate]);
-
-  useEffect(() => {
-    if (user) {
-      fetchUserData();
-    }
-  }, [user]);
-
-  const fetchUserData = async () => {
-    if (!user) return;
-
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    
-    if (profileData) {
-      setProfile(profileData);
-      setFullName(profileData.full_name || "");
-    }
-
-    // Fetch event bookings
-    const { data: bookingsData } = await supabase
-      .from("event_bookings")
-      .select(`
-        id,
-        seats,
-        status,
-        total_amount,
-        created_at,
-        event:events (
-          title,
-          date,
-          venue
-        )
-      `)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (bookingsData) {
-      setEventBookings(bookingsData as unknown as EventBooking[]);
-    }
-
-    // Fetch orders
-    const { data: ordersData } = await supabase
-      .from("orders")
-      .select(`
-        id,
-        status,
-        total_amount,
-        created_at,
-        order_items (
-          quantity,
-          price,
-          book:books (
-            title
-          )
-        )
-      `)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (ordersData) {
-      setOrders(ordersData as unknown as Order[]);
-    }
-
-    // Fetch consultations
-    const { data: consultationsData } = await supabase
-      .from("consultations")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (consultationsData) {
-      setConsultations(consultationsData);
-    }
-  };
+  const [fullName, setFullName] = useState(mockProfile.full_name || "");
+  const [email, setEmail] = useState("sarah.johnson@example.com");
+  const [phone, setPhone] = useState("+61 412 345 678");
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
-
     setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .upsert({
-          id: user.id,
-          full_name: fullName,
-          updated_at: new Date().toISOString(),
-        });
-
-      if (error) throw error;
+    // Simulate save for frontend demo
+    setTimeout(() => {
+      setProfile({ ...profile, full_name: fullName });
       toast.success("Profile updated successfully");
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
-    } finally {
       setIsSaving(false);
-    }
+    }, 1000);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
     navigate("/");
   };
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <section className="pt-32 pb-16 min-h-screen bg-background">
-          <div className="container-wide">
-            <p>Loading...</p>
-          </div>
-        </section>
-      </Layout>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -391,9 +324,18 @@ const DashboardPage = () => {
                       <Label htmlFor="email">Email</Label>
                       <Input
                         id="email"
-                        value={user.email || ""}
-                        disabled
-                        className="bg-secondary"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter your email"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Enter your phone number"
                       />
                     </div>
                     <div>

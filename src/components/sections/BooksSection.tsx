@@ -22,7 +22,7 @@ const books: Book[] = [
     price: 29.99,
     rating: 4.9,
     format: "Hardcover & Digital",
-    coverUrl: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400",
+    coverUrl: "/placeholder.svg",
     featured: true,
   },
   {
@@ -32,7 +32,7 @@ const books: Book[] = [
     price: 24.99,
     rating: 4.8,
     format: "Paperback & Digital",
-    coverUrl: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400",
+    coverUrl: "/placeholder.svg",
   },
   {
     id: 3,
@@ -41,7 +41,7 @@ const books: Book[] = [
     price: 27.99,
     rating: 4.7,
     format: "Hardcover & Digital",
-    coverUrl: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400",
+    coverUrl: "/placeholder.svg",
   },
   {
     id: 4,
@@ -50,7 +50,7 @@ const books: Book[] = [
     price: 32.99,
     rating: 4.9,
     format: "Premium Hardcover",
-    coverUrl: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400",
+    coverUrl: "/placeholder.svg",
   },
 ];
 

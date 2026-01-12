@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { ShoppingCart, Star, Filter, Search, BookOpen, Headphones, FileText, Crown, Lock } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Book {
   id: number;
@@ -34,7 +35,7 @@ const allBooks: Book[] = [
     rating: 4.9,
     reviewCount: 1247,
     format: ["Hardcover", "Paperback", "Digital", "Audiobook"],
-    coverUrl: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400",
+    coverUrl: "/placeholder.svg",
     category: "Personal Development",
     bestseller: true,
   },
@@ -48,7 +49,7 @@ const allBooks: Book[] = [
     rating: 4.8,
     reviewCount: 892,
     format: ["Paperback", "Digital", "Audiobook"],
-    coverUrl: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400",
+    coverUrl: "/placeholder.svg",
     category: "Self-Help",
   },
   {
@@ -61,7 +62,7 @@ const allBooks: Book[] = [
     rating: 4.7,
     reviewCount: 654,
     format: ["Hardcover", "Digital"],
-    coverUrl: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400",
+    coverUrl: "/placeholder.svg",
     category: "Mental Health",
     isPremiumOnly: true,
   },
@@ -75,7 +76,7 @@ const allBooks: Book[] = [
     rating: 4.9,
     reviewCount: 423,
     format: ["Hardcover", "Digital", "Audiobook"],
-    coverUrl: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=400",
+    coverUrl: "/placeholder.svg",
     category: "Leadership",
     bestseller: true,
   },
@@ -89,7 +90,7 @@ const allBooks: Book[] = [
     rating: 4.6,
     reviewCount: 567,
     format: ["Paperback", "Digital"],
-    coverUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400",
+    coverUrl: "/placeholder.svg",
     category: "Productivity",
   },
   {
@@ -102,7 +103,7 @@ const allBooks: Book[] = [
     rating: 4.8,
     reviewCount: 789,
     format: ["Hardcover", "Paperback", "Digital"],
-    coverUrl: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400",
+    coverUrl: "/placeholder.svg",
     category: "Personal Development",
     isPremiumOnly: true,
   },
@@ -117,7 +118,7 @@ const formatIcons: Record<string, React.ElementType> = {
   Audiobook: Headphones,
 };
 
-const BookCard = ({ book, index }: { book: Book; index: number }) => {
+const BookCard = ({ book, index, onAddToCart }: { book: Book; index: number; onAddToCart: (book: Book) => void }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -199,7 +200,7 @@ const BookCard = ({ book, index }: { book: Book; index: number }) => {
               </Link>
             </Button>
           ) : (
-            <Button variant="gold" size="sm">
+            <Button variant="gold" size="sm" onClick={() => onAddToCart(book)}>
               <ShoppingCart size={14} />
               Add to Cart
             </Button>
@@ -213,12 +214,18 @@ const BookCard = ({ book, index }: { book: Book; index: number }) => {
 const BooksPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const navigate = useNavigate();
 
   const filteredBooks = allBooks.filter((book) => {
     const matchesCategory = selectedCategory === "All" || book.category === selectedCategory;
     const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  const handleAddToCart = (book: Book) => {
+    toast.success(`${book.title} added to cart!`);
+    navigate("/cart");
+  };
 
   return (
     <Layout>
@@ -299,7 +306,7 @@ const BooksPage = () => {
           {filteredBooks.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredBooks.map((book, index) => (
-                <BookCard key={book.id} book={book} index={index} />
+                <BookCard key={book.id} book={book} index={index} onAddToCart={handleAddToCart} />
               ))}
             </div>
           ) : (

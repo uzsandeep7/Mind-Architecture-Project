@@ -11,7 +11,7 @@ export const HeroSection = () => {
       <div className="absolute inset-0">
         <img
           src={heroImage}
-          alt="Motivational speaker on stage"
+          alt="Mind Architecture - Resilience Training"
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-dark/95 via-dark/80 to-dark/60" />
@@ -28,7 +28,7 @@ export const HeroSection = () => {
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium mb-6">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Transforming Lives Through Mindset
+              Resilience Training & Development
             </span>
           </motion.div>
 
@@ -49,9 +49,9 @@ export const HeroSection = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-cream/70 leading-relaxed mb-10 max-w-2xl"
           >
-            Unlock your true potential with transformative mindset coaching. 
-            Join thousands who have redesigned their thinking and achieved 
-            extraordinary results in life and business.
+            Helping professionals navigate stress, burnout, and success with resilience 
+            and belonging. Mind Architecture builds ecosystems of care inside organisations, 
+            families, and communities.
           </motion.p>
 
           <motion.div
@@ -62,7 +62,7 @@ export const HeroSection = () => {
           >
             <Link to="/events">
               <Button variant="hero">
-                Upcoming Events
+                Explore Programs
                 <ArrowRight size={18} />
               </Button>
             </Link>
@@ -82,9 +82,9 @@ export const HeroSection = () => {
             className="grid grid-cols-3 gap-8 mt-16 pt-16 border-t border-cream/10"
           >
             {[
-              { number: "500+", label: "Events Hosted" },
-              { number: "50K+", label: "Lives Changed" },
-              { number: "15+", label: "Years Experience" },
+              { number: "500+", label: "Leaders Empowered" },
+              { number: "50+", label: "Organisations Served" },
+              { number: "10+", label: "Years Experience" },
             ].map((stat, index) => (
               <div key={index}>
                 <p className="text-3xl md:text-4xl font-heading font-bold text-primary">
