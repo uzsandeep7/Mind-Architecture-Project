@@ -1,13 +1,13 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Award, BookOpen, Mic } from "lucide-react";
+import { ArrowRight, Award, Heart, Users } from "lucide-react";
 import { Link } from "react-router-dom";
-import speakerImage from "@/assets/speaker-portrait.jpg";
+import speakerImage from "@/assets/dima-istambouli.webp";
 
 const credentials = [
-  { icon: Award, text: "Certified Life Coach" },
-  { icon: BookOpen, text: "Best-Selling Author" },
-  { icon: Mic, text: "International Speaker" },
+  { icon: Award, text: "Resilience Educator" },
+  { icon: Heart, text: "Wellbeing Facilitator" },
+  { icon: Users, text: "Community Builder" },
 ];
 
 export const AboutSection = () => {
@@ -32,7 +32,7 @@ export const AboutSection = () => {
               <div className="relative h-full rounded-lg overflow-hidden shadow-elevated">
                 <img
                   src={speakerImage}
-                  alt="Dr. Marcus Williams - Motivational Speaker"
+                  alt="Dima Istambouli - Resilience Educator"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -45,7 +45,7 @@ export const AboutSection = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="absolute -bottom-8 -right-8 bg-card p-6 rounded-lg shadow-elevated border border-border"
               >
-                <p className="text-4xl font-heading font-bold text-primary">15+</p>
+                <p className="text-4xl font-heading font-bold text-primary">10+</p>
                 <p className="text-muted-foreground text-sm">Years of Experience</p>
               </motion.div>
             </div>
@@ -59,21 +59,21 @@ export const AboutSection = () => {
             transition={{ duration: 0.6 }}
           >
             <span className="text-primary font-medium tracking-widest uppercase text-sm">
-              About The Speaker
+              About The Founder
             </span>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mt-4 mb-6">
-              Dr. Marcus Williams
+              Dima Istambouli
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-              With over 15 years of experience transforming lives, Dr. Marcus Williams 
-              has become one of the most sought-after motivational speakers and mindset 
-              coaches in the world.
+              Dima Istambouli is a resilience educator and facilitator dedicated to helping 
+              professionals and leaders transform stress into clarity and purpose through 
+              intentional design of mindset and community.
             </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              His unique approach to "Mind Architecture" has helped over 50,000 individuals 
-              break through limiting beliefs, develop resilience, and achieve extraordinary 
-              success in their personal and professional lives. From Fortune 500 companies 
-              to intimate workshops, his message resonates across all walks of life.
+              Her mission is to design transformative experiences that support balance, purpose, 
+              and emotional resilience. Mind Architecture builds ecosystems of care inside 
+              organisations, families, and communities—empowering leaders to reset, reconnect, 
+              and rise.
             </p>
 
             {/* Credentials */}

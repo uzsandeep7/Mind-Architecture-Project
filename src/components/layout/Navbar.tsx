@@ -1,30 +1,37 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Search, User, LogOut, ShoppingCart, LayoutDashboard } from "lucide-react";
+import { Menu, X, Search, User, LogOut, ShoppingCart, LayoutDashboard, Settings, BookOpen, Calendar, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/contexts/CartContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import mindArchitectureLogo from "@/assets/mind-architecture-logo.webp";
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
-  { href: "/events", label: "Events" },
-  { href: "/books", label: "Books" },
+  { href: "/events", label: "Programs" },
+  { href: "/books", label: "Resources" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/testimonials", label: "Testimonials" },
-  { href: "/blog", label: "Blog" },
+  { href: "/blog", label: "Insights" },
   { href: "/membership", label: "Membership" },
   { href: "/contact", label: "Contact" },
-  { href: "/admin", label: "Admin" },
 ];
 
 export const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { itemCount } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,13 +76,12 @@ export const Navbar = () => {
       >
         <nav className="container-wide">
           <div className="flex items-center justify-between h-20">
-            <Link to="/" className="flex items-center gap-2">
-              <span className="text-2xl font-heading font-bold tracking-tight">
-                MIND<span className="text-primary">.</span>
-              </span>
-              <span className="text-sm font-body tracking-widest uppercase text-muted-foreground hidden sm:block">
-                Architecture
-              </span>
+            <Link to="/" className="flex items-center gap-3">
+              <img 
+                src={mindArchitectureLogo} 
+                alt="Mind Architecture" 
+                className="h-12 w-auto"
+              />
             </Link>
 
             <div className="hidden lg:flex items-center gap-6">
@@ -110,25 +116,63 @@ export const Navbar = () => {
                 </Link>
               </Button>
 
-              {user ? (
-                <>
-                  {isAdmin && (
-                    <Button variant="ghost" size="icon" asChild>
-                      <Link to="/admin"><LayoutDashboard className="w-5 h-5" /></Link>
-                    </Button>
+              {/* User Profile Dropdown - Same options as Admin for design purposes */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <User className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                      <LayoutDashboard className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/admin" className="flex items-center gap-2 cursor-pointer">
+                      <Settings className="w-4 h-4" />
+                      Admin Panel
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/events" className="flex items-center gap-2 cursor-pointer">
+                      <Calendar className="w-4 h-4" />
+                      My Programs
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/books" className="flex items-center gap-2 cursor-pointer">
+                      <BookOpen className="w-4 h-4" />
+                      My Resources
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/membership" className="flex items-center gap-2 cursor-pointer">
+                      <CreditCard className="w-4 h-4" />
+                      Membership
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {user ? (
+                    <DropdownMenuItem onClick={handleSignOut} className="flex items-center gap-2 cursor-pointer text-destructive">
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem asChild>
+                      <Link to="/auth" className="flex items-center gap-2 cursor-pointer">
+                        <User className="w-4 h-4" />
+                        Sign In
+                      </Link>
+                    </DropdownMenuItem>
                   )}
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link to="/dashboard"><User className="w-5 h-5" /></Link>
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={handleSignOut}>
-                    <LogOut className="w-5 h-5" />
-                  </Button>
-                </>
-              ) : (
-                <Button variant="goldOutline" size="sm" asChild>
-                  <Link to="/auth">Sign In</Link>
-                </Button>
-              )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <Button variant="gold" size="sm" asChild>
                 <Link to="/consultation">Book Consultation</Link>
@@ -171,20 +215,16 @@ export const Navbar = () => {
                   </motion.div>
                 ))}
                 <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: navLinks.length * 0.1 }} className="mt-4 space-y-3">
+                  <Button variant="goldOutline" size="lg" className="w-full" asChild>
+                    <Link to="/dashboard">My Dashboard</Link>
+                  </Button>
+                  <Button variant="outline" size="lg" className="w-full" asChild>
+                    <Link to="/admin">Admin Panel</Link>
+                  </Button>
                   {user ? (
-                    <>
-                      <Button variant="goldOutline" size="lg" className="w-full" asChild>
-                        <Link to="/dashboard">My Dashboard</Link>
-                      </Button>
-                      {isAdmin && (
-                        <Button variant="outline" size="lg" className="w-full" asChild>
-                          <Link to="/admin">Admin Dashboard</Link>
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="lg" className="w-full" onClick={handleSignOut}>
-                        Sign Out
-                      </Button>
-                    </>
+                    <Button variant="ghost" size="lg" className="w-full" onClick={handleSignOut}>
+                      Sign Out
+                    </Button>
                   ) : (
                     <Button variant="goldOutline" size="lg" className="w-full" asChild>
                       <Link to="/auth">Sign In</Link>

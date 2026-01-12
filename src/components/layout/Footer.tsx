@@ -1,27 +1,27 @@
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Twitter, Youtube, Mail, Phone, MapPin } from "lucide-react";
+import { Facebook, Instagram, Linkedin, Mail, Phone, MapPin } from "lucide-react";
+import mindArchitectureLogo from "@/assets/mind-architecture-logo.webp";
 
 const footerLinks = {
   quickLinks: [
     { href: "/about", label: "About" },
-    { href: "/events", label: "Events" },
-    { href: "/books", label: "Books" },
-    { href: "/testimonials", label: "Testimonials" },
+    { href: "/events", label: "Programs" },
+    { href: "/books", label: "Resources" },
+    { href: "/blog", label: "Insights" },
     { href: "/contact", label: "Contact" },
   ],
   services: [
-    { href: "/events", label: "Speaking Engagements" },
-    { href: "/books", label: "Publications" },
+    { href: "/events", label: "Resilience Training" },
+    { href: "/events", label: "Corporate Workshops" },
     { href: "/contact", label: "Consultations" },
-    { href: "/events", label: "Workshops" },
+    { href: "/membership", label: "Membership" },
   ],
 };
 
 const socialLinks = [
   { href: "#", icon: Facebook, label: "Facebook" },
   { href: "#", icon: Instagram, label: "Instagram" },
-  { href: "#", icon: Twitter, label: "Twitter" },
-  { href: "#", icon: Youtube, label: "YouTube" },
+  { href: "#", icon: Linkedin, label: "LinkedIn" },
 ];
 
 export const Footer = () => {
@@ -33,12 +33,16 @@ export const Footer = () => {
           {/* Brand Column */}
           <div className="lg:col-span-1">
             <Link to="/" className="inline-block mb-6">
-              <span className="text-3xl font-heading font-bold tracking-tight">
-                MIND<span className="text-primary">.</span>
-              </span>
+              <img 
+                src={mindArchitectureLogo} 
+                alt="Mind Architecture" 
+                className="h-16 w-auto bg-white rounded-lg p-2"
+              />
             </Link>
             <p className="text-cream/70 text-sm leading-relaxed mb-6">
-              Empowering individuals to unlock their full potential through transformative mindset coaching and personal development.
+              Helping professionals navigate stress, burnout, and success with resilience 
+              and belonging. Building ecosystems of care inside organisations, families, 
+              and communities.
             </p>
             <div className="flex gap-4">
               {socialLinks.map((social) => (
@@ -101,8 +105,8 @@ export const Footer = () => {
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-primary mt-0.5 shrink-0" />
                 <span className="text-cream/70 text-sm">
-                  123 Inspiration Ave, Suite 100<br />
-                  Melbourne, VIC 3000
+                  Melbourne, VIC<br />
+                  Australia
                 </span>
               </li>
               <li className="flex items-center gap-3">
@@ -111,16 +115,16 @@ export const Footer = () => {
                   href="tel:+61412345678"
                   className="text-cream/70 hover:text-primary transition-colors text-sm"
                 >
-                  +61 412 345 678
+                  Contact Us
                 </a>
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={18} className="text-primary shrink-0" />
                 <a
-                  href="mailto:hello@mindarchitecture.com"
+                  href="mailto:hello@mindarchitecture.com.au"
                   className="text-cream/70 hover:text-primary transition-colors text-sm"
                 >
-                  hello@mindarchitecture.com
+                  hello@mindarchitecture.com.au
                 </a>
               </li>
             </ul>
