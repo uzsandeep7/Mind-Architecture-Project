@@ -21,12 +21,12 @@ export const CTASection = () => {
             Ready to Transform?
           </span>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mt-4 mb-6">
-            Start Your Journey to an
-            <span className="text-gradient-gold"> Extraordinary Life</span>
+            Reset, Reconnect &
+            <span className="text-gradient-gold"> Rise</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-10">
-            Whether you're looking to break through limiting beliefs, achieve peak 
-            performance, or simply live a more fulfilled life, we're here to guide 
+            Whether you're looking to navigate stress, build resilience, or create 
+            ecosystems of care within your organisation, we're here to guide 
             you every step of the way.
           </p>
 
@@ -34,12 +34,12 @@ export const CTASection = () => {
             <Link to="/contact">
               <Button variant="hero" size="xl" className="w-full sm:w-auto">
                 <Calendar size={20} />
-                Book Free Consultation
+                Book Consultation
               </Button>
             </Link>
             <Link to="/events">
               <Button variant="heroOutline" size="xl" className="w-full sm:w-auto">
-                Browse Events
+                Explore Programs
                 <ArrowRight size={20} />
               </Button>
             </Link>
@@ -47,7 +47,7 @@ export const CTASection = () => {
 
           {/* Trust Badge */}
           <p className="text-muted-foreground text-sm mt-8">
-            Join over 50,000+ individuals who have transformed their lives
+            Empowering leaders to transform stress into clarity and purpose
           </p>
         </motion.div>
       </div>

@@ -1,41 +1,41 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Award, BookOpen, Mic, Users, Heart, Target, ArrowRight, Calendar } from "lucide-react";
+import { Award, Heart, Users, Shield, Target, ArrowRight, Calendar, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import speakerImage from "@/assets/speaker-portrait.jpg";
+import speakerImage from "@/assets/dima-istambouli.webp";
 
 const credentials = [
-  { icon: Award, title: "Certified Life Coach", description: "ICF Accredited Professional Coach" },
-  { icon: BookOpen, title: "Best-Selling Author", description: "4 Books, 500K+ Copies Sold" },
-  { icon: Mic, title: "International Speaker", description: "500+ Events in 30+ Countries" },
-  { icon: Users, title: "Corporate Trainer", description: "Fortune 500 Company Experience" },
+  { icon: Award, title: "Resilience Educator", description: "Certified in trauma-informed facilitation" },
+  { icon: Heart, title: "Wellbeing Facilitator", description: "Designing transformative experiences" },
+  { icon: Users, title: "Community Builder", description: "Creating ecosystems of care" },
+  { icon: Shield, title: "Corporate Trainer", description: "Organisational resilience programs" },
 ];
 
 const values = [
   {
     icon: Heart,
-    title: "Authenticity",
-    description: "I believe in showing up as your true self, embracing vulnerability as a strength.",
+    title: "Compassion",
+    description: "We lead with empathy, creating safe spaces for growth and healing.",
   },
   {
     icon: Target,
-    title: "Excellence",
-    description: "Striving for the highest standards in everything we do, always pushing boundaries.",
+    title: "Purpose",
+    description: "Every experience we design supports balance, clarity, and emotional resilience.",
   },
   {
     icon: Users,
-    title: "Community",
-    description: "Building meaningful connections and supporting each other's growth journey.",
+    title: "Belonging",
+    description: "Building communities where everyone feels valued, heard, and supported.",
   },
 ];
 
 const timeline = [
-  { year: "2010", title: "Founded Mind Architecture", description: "Started my coaching practice after years in corporate leadership." },
-  { year: "2014", title: "First Bestseller", description: "'Mind Architecture' became an international bestseller." },
-  { year: "2018", title: "500+ Events Milestone", description: "Reached half a million people through live events worldwide." },
-  { year: "2022", title: "50,000 Lives Changed", description: "Celebrated transforming 50,000+ lives through our programs." },
-  { year: "2025", title: "Global Expansion", description: "Launched virtual programs reaching participants in 100+ countries." },
+  { year: "2015", title: "The Awakening", description: "Overcoming personal burnout sparked the vision for Mind Architecture." },
+  { year: "2017", title: "Mind Architecture Founded", description: "Launched with a mission to help leaders transform stress into purpose." },
+  { year: "2019", title: "Organisational Programs", description: "Expanded to serve teams and organisations with resilience training." },
+  { year: "2022", title: "Community Impact", description: "Reached 500+ leaders across Australia through workshops and programs." },
+  { year: "2025", title: "Ecosystems of Care", description: "Building care networks inside organisations, families, and communities." },
 ];
 
 const AboutPage = () => {
@@ -51,16 +51,20 @@ const AboutPage = () => {
               transition={{ duration: 0.6 }}
             >
               <span className="text-primary font-medium tracking-widest uppercase text-sm">
-                About The Speaker
+                About The Founder
               </span>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold mt-4 mb-6">
-                Dr. Marcus
-                <span className="text-gradient-gold"> Williams</span>
+                Dima
+                <span className="text-gradient-gold"> Istambouli</span>
               </h1>
-              <p className="text-cream/70 text-lg mb-8">
-                Transforming lives through the power of mindset for over 15 years. 
-                From corporate boardrooms to sold-out stadiums, I've dedicated my life 
-                to helping others unlock their true potential.
+              <p className="text-cream/70 text-lg mb-4">
+                Dima Istambouli is a resilience educator and facilitator. Her mission is 
+                helping leaders transform stress into clarity and purpose through intentional 
+                design of mindset and community.
+              </p>
+              <p className="text-cream/70 mb-8">
+                Empowering leaders to reset, reconnect, and rise—Mind Architecture designs 
+                transformative experiences that support balance, purpose, and emotional resilience.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/contact">
@@ -71,7 +75,7 @@ const AboutPage = () => {
                 </Link>
                 <Link to="/events">
                   <Button variant="heroDark">
-                    View Events
+                    View Programs
                     <ArrowRight size={18} />
                   </Button>
                 </Link>
@@ -90,7 +94,7 @@ const AboutPage = () => {
                 <div className="relative h-full rounded-lg overflow-hidden shadow-elevated">
                   <img
                     src={speakerImage}
-                    alt="Dr. Marcus Williams"
+                    alt="Dima Istambouli"
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -110,10 +114,10 @@ const AboutPage = () => {
             className="text-center mb-12"
           >
             <span className="text-primary font-medium tracking-widest uppercase text-sm">
-              Credentials
+              Expertise
             </span>
             <h2 className="text-3xl md:text-4xl font-heading font-bold mt-4">
-              Expertise You Can Trust
+              Credentials & Experience
             </h2>
           </motion.div>
 
@@ -148,26 +152,26 @@ const AboutPage = () => {
               viewport={{ once: true }}
             >
               <span className="text-primary font-medium tracking-widest uppercase text-sm">
-                My Story
+                The Origin Story
               </span>
               <h2 className="text-3xl md:text-4xl font-heading font-bold mt-4 mb-6">
-                From Struggle to Success
+                From Burnout to Purpose
               </h2>
               <div className="space-y-4 text-muted-foreground">
                 <p>
-                  My journey into mindset coaching wasn't born from success—it was forged in the 
-                  fires of personal struggle. At 28, I was a burnt-out corporate executive, 
-                  disconnected from my purpose and on the verge of losing everything that mattered.
+                  The origin story of Mind Architecture began with overcoming burnout—a personal 
+                  journey that revealed the transformative power of resilience and intentional 
+                  community design.
                 </p>
                 <p>
-                  It was during my lowest moment that I discovered the power of mental architecture. 
-                  Through years of study, practice, and personal transformation, I developed the 
-                  frameworks that would eventually help over 50,000 people redesign their lives.
+                  What started as a quest for personal healing evolved into a mission to help 
+                  others. Dima discovered that true resilience isn't just about individual 
+                  strength—it's about creating ecosystems of care that support everyone.
                 </p>
                 <p>
-                  Today, I'm honored to share these principles with audiences around the world. 
-                  My mission is simple: to help you unlock the extraordinary potential that 
-                  already exists within you.
+                  Today, Mind Architecture works with organisations, families, and communities 
+                  to build cultures where people don't just survive—they thrive. Our approach 
+                  combines evidence-based practices with deeply human connection.
                 </p>
               </div>
             </motion.div>
@@ -201,6 +205,27 @@ const AboutPage = () => {
         </div>
       </section>
 
+      {/* Mission Statement */}
+      <section className="section-padding bg-primary/5">
+        <div className="container-wide">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-4xl mx-auto"
+          >
+            <Sparkles className="text-primary mx-auto mb-6" size={40} />
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-heading font-bold mb-6">
+              Our Mission
+            </h2>
+            <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed">
+              "To design transformative experiences that support balance, purpose, and emotional 
+              resilience—building ecosystems of care inside organisations, families, and communities."
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Values */}
       <section className="section-padding bg-background">
         <div className="container-wide">
@@ -214,7 +239,7 @@ const AboutPage = () => {
               Core Values
             </span>
             <h2 className="text-3xl md:text-4xl font-heading font-bold mt-4">
-              What I Stand For
+              What We Stand For
             </h2>
           </motion.div>
 
@@ -249,10 +274,10 @@ const AboutPage = () => {
             className="max-w-2xl mx-auto"
           >
             <h2 className="text-3xl md:text-4xl font-heading font-bold mb-6">
-              Ready to Transform Your Life?
+              Ready to Reset, Reconnect & Rise?
             </h2>
             <p className="text-cream/70 mb-8">
-              Let's work together to build the mindset you need for success.
+              Let's work together to build resilience and create lasting change.
             </p>
             <Link to="/contact">
               <Button variant="hero" size="xl">
