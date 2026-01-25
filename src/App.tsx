@@ -37,10 +37,10 @@ const App = () => {
           <Toaster />
           <Sonner />
 
+
           <BrowserRouter>
             <ScrollToTop />
-            {/*<ChatWidget />*/}
-
+            <ChatWidget />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/events" element={<Events />} />

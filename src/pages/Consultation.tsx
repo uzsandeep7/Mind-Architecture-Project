@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar, Clock, MessageSquare, Video, User, CheckCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -43,15 +43,23 @@ const timeSlots = [
   "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
 ];
 
+const CALENDAR_EMBED_URL = import.meta.env.VITE_CONSULTATION_CALENDAR_URL as string | undefined;
+
 const ConsultationPage = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+
   const [selectedType, setSelectedType] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
+
   const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
+
+  const [useCalendarIntegration, setUseCalendarIntegration] = useState(true);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -59,55 +67,14 @@ const ConsultationPage = () => {
       setUser(session?.user ?? null);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
         setUser(session?.user ?? null);
-      }
-    );
+      });
+    });
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user) {
-      toast.error("Please sign in to book a consultation");
-      navigate("/auth");
-      return;
-    }
-
-    if (!selectedType || !selectedDate || !selectedTime) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const dateTime = new Date(`${selectedDate}T${convertTo24Hour(selectedTime)}`);
-      
-      const { error } = await supabase
-        .from("consultations")
-        .insert({
-          user_id: user.id,
-          date: dateTime.toISOString(),
-          topic: `${selectedType} - ${topic}`,
-          message,
-          status: "pending",
-        });
-
-      if (error) throw error;
-
-      setIsBooked(true);
-      toast.success("Consultation booked successfully!");
-    } catch (error) {
-      console.error("Error booking consultation:", error);
-      toast.error("Failed to book consultation. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const convertTo24Hour = (time: string) => {
     const [hourMin, period] = time.split(" ");
@@ -117,9 +84,9 @@ const ConsultationPage = () => {
     return `${hour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}:00`;
   };
 
-  // Get next 14 available days
-  const getAvailableDates = () => {
-    const dates = [];
+  // Next 14 available weekdays
+  const availableDates = useMemo(() => {
+    const dates: string[] = [];
     const today = new Date();
     for (let i = 1; i <= 14; i++) {
       const date = new Date(today);
@@ -129,6 +96,74 @@ const ConsultationPage = () => {
       }
     }
     return dates;
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!user) {
+      toast.error("Please sign in to book a consultation");
+      navigate("/auth");
+      return;
+    }
+
+    if (!selectedType) {
+      toast.error("Please choose a consultation type");
+      return;
+    }
+
+    // If not using calendar integration, enforce date/time
+    if (!useCalendarIntegration) {
+      if (!selectedDate || !selectedTime) {
+        toast.error("Please select date and time");
+        return;
+      }
+    } else {
+      // If calendar integration is ON, ensure you at least set the embed URL
+      if (!CALENDAR_EMBED_URL) {
+        toast.error("Calendar integration URL is missing. Please add it to .env.local");
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // If using manual date/time -> store selected slot
+      // If using calendar embed -> store a placeholder timestamp + notes (prototype-friendly)
+      let dateTime: Date;
+      if (!useCalendarIntegration) {
+        dateTime = new Date(`${selectedDate}T${convertTo24Hour(selectedTime)}`);
+      } else {
+        dateTime = new Date(); // placeholder for prototype
+      }
+
+      const typeTitle = consultationTypes.find((t) => t.id === selectedType)?.title ?? selectedType;
+
+      const { error } = await supabase
+        .from("consultations")
+        .insert({
+          user_id: user.id,
+          date: dateTime.toISOString(),
+          topic: `${typeTitle}${topic ? ` - ${topic}` : ""}`,
+          message: `${message ? message + "\n\n" : ""}${
+            useCalendarIntegration
+              ? "Booking method: Google Calendar integration (embedded scheduler)"
+              : `Requested slot: ${selectedDate} ${selectedTime}`
+          }`,
+          status: "pending",
+        });
+
+      if (error) throw error;
+
+      setIsBooked(true);
+      toast.success("Consultation request submitted successfully!");
+    } catch (error) {
+      console.error("Error booking consultation:", error);
+      toast.error("Failed to book consultation. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (isBooked) {
@@ -148,8 +183,8 @@ const ConsultationPage = () => {
                 Consultation Booked!
               </h1>
               <p className="text-muted-foreground mb-8">
-                Your consultation has been scheduled. We'll send you a confirmation 
-                email with the meeting details shortly.
+                Your consultation request has been submitted. If you booked via the calendar, it should appear in the admin schedule.
+                We’ll send confirmation details shortly.
               </p>
               <div className="flex gap-4 justify-center">
                 <Button variant="gold" onClick={() => navigate("/dashboard")}>
@@ -184,8 +219,7 @@ const ConsultationPage = () => {
               <span className="text-gradient-gold"> Journey Today</span>
             </h1>
             <p className="text-cream/70 text-lg">
-              Schedule a personalized session to discuss your goals and create a 
-              roadmap for your transformation.
+              Schedule a personalised session to discuss your goals and create a roadmap for your transformation.
             </p>
           </motion.div>
         </div>
@@ -196,6 +230,40 @@ const ConsultationPage = () => {
         <div className="container-wide">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleSubmit} className="space-y-8">
+
+              {/* Step 0: Choose booking method */}
+              <div className="p-5 rounded-xl border border-border bg-card">
+                <h2 className="text-xl font-heading font-bold mb-3">
+                  Booking Method
+                </h2>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant={useCalendarIntegration ? "gold" : "outline"}
+                    onClick={() => setUseCalendarIntegration(true)}
+                  >
+                    <Calendar size={16} className="mr-2" />
+                    Book via Google Calendar
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant={!useCalendarIntegration ? "gold" : "outline"}
+                    onClick={() => setUseCalendarIntegration(false)}
+                  >
+                    <Clock size={16} className="mr-2" />
+                    Pick a time manually
+                  </Button>
+                </div>
+
+                {useCalendarIntegration && (
+                  <p className="text-sm text-muted-foreground mt-3">
+                    This uses an embedded scheduler connected to the admin’s Google Calendar.
+                  </p>
+                )}
+              </div>
+
               {/* Step 1: Select Type */}
               <div>
                 <h2 className="text-xl font-heading font-bold mb-4">
@@ -229,61 +297,99 @@ const ConsultationPage = () => {
                 </div>
               </div>
 
-              {/* Step 2: Select Date */}
-              <div>
-                <h2 className="text-xl font-heading font-bold mb-4">
-                  2. Select Date
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {getAvailableDates().map((date) => (
-                    <button
-                      key={date}
-                      type="button"
-                      onClick={() => setSelectedDate(date)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        selectedDate === date
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                      }`}
-                    >
-                      {new Date(date).toLocaleDateString("en-US", { 
-                        weekday: "short", 
-                        month: "short", 
-                        day: "numeric" 
-                      })}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {/* Step 2+3: Calendar OR manual date/time */}
+              {useCalendarIntegration ? (
+                <div>
+                  <h2 className="text-xl font-heading font-bold mb-4">
+                    2. Select a Time (Google Calendar)
+                  </h2>
 
-              {/* Step 3: Select Time */}
-              <div>
-                <h2 className="text-xl font-heading font-bold mb-4">
-                  3. Select Time
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {timeSlots.map((time) => (
-                    <button
-                      key={time}
-                      type="button"
-                      onClick={() => setSelectedTime(time)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        selectedTime === time
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                      }`}
-                    >
-                      <Clock size={14} className="inline mr-1" />
-                      {time}
-                    </button>
-                  ))}
+                  {!CALENDAR_EMBED_URL ? (
+                    <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5">
+                      <p className="font-medium mb-2">Calendar URL missing</p>
+                      <p className="text-sm text-muted-foreground">
+                        Add this to <code className="px-1 py-0.5 rounded bg-muted">.env.local</code>:
+                        <br />
+                        <code className="block mt-2 px-2 py-2 rounded bg-muted">
+                          VITE_CONSULTATION_CALENDAR_URL=YOUR_LINK
+                        </code>
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl overflow-hidden border border-border bg-card">
+                      <iframe
+                        title="Book a Consultation"
+                        src={CALENDAR_EMBED_URL}
+                        width="100%"
+                        height="750"
+                        frameBorder="0"
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-sm text-muted-foreground mt-3">
+                    After selecting a slot above, submit this form to save your request in the system.
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Step 2: Select Date */}
+                  <div>
+                    <h2 className="text-xl font-heading font-bold mb-4">
+                      2. Select Date
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {availableDates.map((date) => (
+                        <button
+                          key={date}
+                          type="button"
+                          onClick={() => setSelectedDate(date)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedDate === date
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          }`}
+                        >
+                          {new Date(date).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric"
+                          })}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Step 3: Select Time */}
+                  <div>
+                    <h2 className="text-xl font-heading font-bold mb-4">
+                      3. Select Time
+                    </h2>
+                    <div className="flex flex-wrap gap-2">
+                      {timeSlots.map((time) => (
+                        <button
+                          key={time}
+                          type="button"
+                          onClick={() => setSelectedTime(time)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            selectedTime === time
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                          }`}
+                        >
+                          <Clock size={14} className="inline mr-1" />
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Step 4: Additional Info */}
               <div>
                 <h2 className="text-xl font-heading font-bold mb-4">
-                  4. Tell Us More (Optional)
+                  {useCalendarIntegration ? "3. Tell Us More (Optional)" : "4. Tell Us More (Optional)"}
                 </h2>
                 <div className="space-y-4">
                   <div>
@@ -295,6 +401,7 @@ const ConsultationPage = () => {
                       onChange={(e) => setTopic(e.target.value)}
                     />
                   </div>
+
                   <div>
                     <Label htmlFor="message">Additional Notes</Label>
                     <Textarea
@@ -318,6 +425,7 @@ const ConsultationPage = () => {
                     </p>
                   )}
                 </div>
+
                 {!user ? (
                   <Button
                     type="button"
@@ -325,7 +433,7 @@ const ConsultationPage = () => {
                     size="lg"
                     onClick={() => navigate("/auth")}
                   >
-                    <User size={18} />
+                    <User size={18} className="mr-2" />
                     Sign In to Book
                   </Button>
                 ) : (
@@ -333,12 +441,18 @@ const ConsultationPage = () => {
                     type="submit"
                     variant="gold"
                     size="lg"
-                    disabled={isSubmitting || !selectedType || !selectedDate || !selectedTime}
+                    disabled={
+                      isSubmitting ||
+                      !selectedType ||
+                      (!useCalendarIntegration && (!selectedDate || !selectedTime)) ||
+                      (useCalendarIntegration && !CALENDAR_EMBED_URL)
+                    }
                   >
-                    {isSubmitting ? "Booking..." : "Confirm Booking"}
+                    {isSubmitting ? "Submitting..." : "Confirm Booking"}
                   </Button>
                 )}
               </div>
+
             </form>
           </div>
         </div>
