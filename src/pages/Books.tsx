@@ -27,17 +27,18 @@ interface Book {
 const allBooks: Book[] = [
   {
     id: 1,
-    title: "Mind Architecture",
-    subtitle: "Building the Foundation of Success",
+    title: "Intentional Reset",
+    subtitle: "Reset your Mind to unlock Success & Balance",
     description: "The definitive guide to restructuring your mental frameworks for lasting success. Learn the principles that have transformed over 50,000 lives.",
     price: 29.99,
     memberPrice: 22.49,
     rating: 4.9,
     reviewCount: 1247,
     format: ["Hardcover", "Paperback", "Digital", "Audiobook"],
-    coverUrl: "/placeholder.svg",
+    coverUrl: "/Book1.jpg",
     category: "Personal Development",
     bestseller: true,
+    
   },
   {
     id: 2,
@@ -64,7 +65,7 @@ const allBooks: Book[] = [
     format: ["Hardcover", "Digital"],
     coverUrl: "/placeholder.svg",
     category: "Mental Health",
-    isPremiumOnly: true,
+    
   },
   {
     id: 4,

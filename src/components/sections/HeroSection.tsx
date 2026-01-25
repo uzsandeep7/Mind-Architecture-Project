@@ -2,58 +2,65 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Play } from "lucide-react";
 import { Link } from "react-router-dom";
-import heroImage from "@/assets/hero-stage.jpg";
+import heroImage from "@/assets/hero.jpg";
 
 export const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image with Overlay */}
+    <section className="relative min-h-screen flex items-center overflow-hidden bg-[hsl(0,0%,8%)] pb-24">
+      
+      {/* Background Image */}
       <div className="absolute inset-0">
         <img
           src={heroImage}
           alt="Mind Architecture - Resilience Training"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-dark/95 via-dark/80 to-dark/60" />
-        <div className="absolute inset-0 bg-gradient-to-t from-dark via-transparent to-dark/30" />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-black/50" />
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container-wide pt-20">
-        <div className="max-w-3xl">
+      <div className="relative z-10 w-full px-6 lg:px-20 pt-32">
+        <div className="max-w-5xl">
+
+          {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-sm font-medium mb-6">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-sm font-medium mb-6">
+              <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
               Resilience Training & Development
             </span>
           </motion.div>
 
+          {/* Heading */}
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-heading font-bold text-cream leading-tight mb-6"
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-heading font-bold text-white leading-tight mb-6"
           >
-            Build the
-            <span className="text-gradient-gold"> Architecture </span>
+            Build the{" "}
+            <span className="text-gradient-gold">Architecture</span>{" "}
             of Your Mind
           </motion.h1>
 
+          {/* Description */}
           <motion.p
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg md:text-xl text-cream/70 leading-relaxed mb-10 max-w-2xl"
+            className="text-lg md:text-xl text-white/80 leading-relaxed mb-10 max-w-3xl"
           >
-            Helping professionals navigate stress, burnout, and success with resilience 
-            and belonging. Mind Architecture builds ecosystems of care inside organisations, 
-            families, and communities.
+            Helping professionals navigate stress, burnout, and success with
+            resilience and belonging. Mind Architecture builds ecosystems of
+            care inside organisations, families, and communities.
           </motion.p>
 
+          {/* Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -61,14 +68,15 @@ export const HeroSection = () => {
             className="flex flex-wrap gap-4"
           >
             <Link to="/events">
-              <Button variant="hero">
+              <Button variant="hero" className="gap-2">
                 Explore Programs
                 <ArrowRight size={18} />
               </Button>
             </Link>
+
             <Button variant="heroDark" className="gap-3">
-              <span className="w-10 h-10 rounded-full bg-primary flex items-center justify-center">
-                <Play size={16} className="text-primary-foreground ml-0.5" />
+              <span className="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center">
+                <Play size={16} className="text-black ml-0.5" />
               </span>
               Watch Introduction
             </Button>
@@ -79,7 +87,7 @@ export const HeroSection = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-3 gap-8 mt-16 pt-16 border-t border-cream/10"
+            className="grid grid-cols-3 gap-10 mt-16"
           >
             {[
               { number: "500+", label: "Leaders Empowered" },
@@ -87,13 +95,16 @@ export const HeroSection = () => {
               { number: "10+", label: "Years Experience" },
             ].map((stat, index) => (
               <div key={index}>
-                <p className="text-3xl md:text-4xl font-heading font-bold text-primary">
+                <p className="text-3xl md:text-4xl font-heading font-bold text-yellow-500">
                   {stat.number}
                 </p>
-                <p className="text-cream/50 text-sm mt-1">{stat.label}</p>
+                <p className="text-white/50 text-sm mt-1">
+                  {stat.label}
+                </p>
               </div>
             ))}
           </motion.div>
+
         </div>
       </div>
 
@@ -104,14 +115,15 @@ export const HeroSection = () => {
         transition={{ delay: 1 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
       >
-        <div className="w-6 h-10 rounded-full border-2 border-cream/30 flex items-start justify-center p-2">
+        <div className="w-6 h-10 rounded-full border-2 border-white/30 flex items-start justify-center p-2">
           <motion.div
             animate={{ y: [0, 12, 0] }}
             transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-1.5 h-1.5 rounded-full bg-primary"
+            className="w-1.5 h-1.5 rounded-full bg-yellow-500"
           />
         </div>
       </motion.div>
+
     </section>
   );
 };
