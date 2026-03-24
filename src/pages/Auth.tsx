@@ -18,6 +18,28 @@ const passwordSchema = z
   .regex(/[a-z]/, "Password must contain at least one lowercase letter")
   .regex(/[0-9]/, "Password must contain at least one number");
 
+// Correct Google "G" (SVG) — works well on dark themes
+const GoogleIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
+    <path
+      fill="#EA4335"
+      d="M24 9.5c3.54 0 6.73 1.22 9.23 3.62l6.9-6.9C35.95 2.36 30.35 0 24 0 14.64 0 6.56 5.38 2.7 13.22l8.02 6.23C12.62 13.2 17.88 9.5 24 9.5z"
+    />
+    <path
+      fill="#4285F4"
+      d="M46.12 24.5c0-1.64-.15-3.21-.43-4.74H24v9.02h12.4c-.53 2.87-2.17 5.31-4.62 6.94l7.1 5.51c4.15-3.83 6.24-9.47 6.24-16.73z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M10.72 28.55A14.5 14.5 0 0 1 9.95 24c0-1.58.28-3.11.77-4.55L2.7 13.22A23.93 23.93 0 0 0 0 24c0 3.87.93 7.53 2.7 10.78l8.02-6.23z"
+    />
+    <path
+      fill="#34A853"
+      d="M24 48c6.35 0 11.95-2.09 15.93-5.67l-7.1-5.51c-1.98 1.33-4.51 2.12-8.83 2.12-6.12 0-11.38-3.7-13.28-8.95L2.7 34.78C6.56 42.62 14.64 48 24 48z"
+    />
+  </svg>
+);
+
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -25,23 +47,21 @@ const Auth = () => {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session) {
-          navigate("/");
-        }
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) navigate("/");
+    });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        navigate("/");
-      }
+      if (session) navigate("/");
     });
 
     return () => subscription.unsubscribe();
@@ -64,9 +84,35 @@ const Auth = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleGoogle = async () => {
+    setGoogleLoading(true);
+    try {
+      const redirectTo = `${window.location.origin}/`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo },
+      });
+
+      if (error) {
+        toast({
+          title: "Google sign-in failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({
+        title: "Error",
+        description: "Could not start Google sign-in. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     setLoading(true);
@@ -100,15 +146,13 @@ const Auth = () => {
         }
       } else {
         const redirectUrl = `${window.location.origin}/`;
-        
+
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: redirectUrl,
-            data: {
-              full_name: fullName,
-            },
+            data: { full_name: fullName },
           },
         });
 
@@ -133,7 +177,7 @@ const Auth = () => {
           });
         }
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -159,9 +203,7 @@ const Auth = () => {
                 {isLogin ? "Welcome Back" : "Join MIND Architecture"}
               </h1>
               <p className="text-muted-foreground">
-                {isLogin
-                  ? "Sign in to access your account"
-                  : "Create an account to get started"}
+                {isLogin ? "Sign in to access your account" : "Create an account to get started"}
               </p>
             </div>
 
@@ -201,9 +243,7 @@ const Auth = () => {
                     required
                   />
                 </div>
-                {errors.email && (
-                  <p className="text-sm text-destructive">{errors.email}</p>
-                )}
+                {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
               </div>
 
               <div className="space-y-2">
@@ -227,16 +267,10 @@ const Auth = () => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
+                {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                 {!isLogin && (
                   <p className="text-xs text-muted-foreground">
                     Password must be at least 8 characters with uppercase, lowercase, and a number.
@@ -244,14 +278,33 @@ const Auth = () => {
                 )}
               </div>
 
-              <Button
-                type="submit"
-                variant="gold"
-                className="w-full"
-                disabled={loading}
-              >
+              {/* Primary action */}
+              <Button type="submit" variant="gold" className="w-full" disabled={loading}>
                 {loading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
               </Button>
+
+              {/* Divider */}
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-card px-3 text-xs text-muted-foreground">OR</span>
+                </div>
+              </div>
+
+              {/* Google sign-in (dark-theme friendly) */}
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={googleLoading}
+                className="w-full h-11 rounded-xl border border-border bg-white text-zinc-900 hover:bg-zinc-100 transition-colors flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <GoogleIcon />
+                <span className="font-medium">
+                  {googleLoading ? "Connecting..." : "Continue with Google"}
+                </span>
+              </button>
             </form>
 
             <div className="mt-6 text-center">
