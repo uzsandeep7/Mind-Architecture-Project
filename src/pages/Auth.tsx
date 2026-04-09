@@ -6,17 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
+const loginPasswordSchema = z.string().min(1, "Please enter your password");
 const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
   .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
   .regex(/[a-z]/, "Password must contain at least one lowercase letter")
   .regex(/[0-9]/, "Password must contain at least one number");
+
+type AppRole = Database["public"]["Enums"]["app_role"];
 
 // Correct Google "G" (SVG) — works well on dark themes
 const GoogleIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
@@ -53,15 +57,34 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const resolveUserDestination = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .in("role", ["owner", "admin", "moderator", "user"]);
+
+    if (error) throw error;
+
+    const roles = (data ?? []).map((item) => item.role as AppRole);
+    const isPrivileged = roles.includes("owner") || roles.includes("admin");
+
+    navigate(isPrivileged ? "/admin" : "/dashboard");
+  };
+
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) navigate("/");
+      if (session?.user) {
+        void resolveUserDestination(session.user.id);
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/");
+      if (session?.user) {
+        void resolveUserDestination(session.user.id);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -75,9 +98,13 @@ const Auth = () => {
       newErrors.email = emailResult.error.errors[0].message;
     }
 
-    const passwordResult = passwordSchema.safeParse(password);
+    const passwordResult = (isLogin ? loginPasswordSchema : passwordSchema).safeParse(password);
     if (!passwordResult.success) {
       newErrors.password = passwordResult.error.errors[0].message;
+    }
+
+    if (!isLogin && !fullName.trim()) {
+      newErrors.password ??= undefined;
     }
 
     setErrors(newErrors);
@@ -143,6 +170,13 @@ const Auth = () => {
             title: "Welcome back!",
             description: "You have successfully signed in.",
           });
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (user) {
+            await resolveUserDestination(user.id);
+          }
         }
       } else {
         const redirectUrl = `${window.location.origin}/`;
@@ -173,7 +207,7 @@ const Auth = () => {
         } else {
           toast({
             title: "Account created!",
-            description: "Welcome to MIND Architecture.",
+            description: "Welcome to MIND Architecture. Please check your email if confirmation is required.",
           });
         }
       }

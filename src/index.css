@@ -51,6 +51,44 @@
     --font-body: 'Inter', system-ui, sans-serif;
   }
 
+  :root[data-contrast-mode="high"] {
+    --background: 220 32% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 26% 12%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 220 26% 12%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 208 100% 56%;
+    --primary-foreground: 220 45% 10%;
+
+    --secondary: 220 22% 18%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 220 16% 24%;
+    --muted-foreground: 210 18% 78%;
+
+    --accent: 208 100% 56%;
+    --accent-foreground: 220 45% 10%;
+
+    --destructive: 0 72% 44%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 28% 28%;
+    --input: 214 28% 28%;
+    --ring: 208 100% 56%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(208 100% 64%), hsl(222 88% 60%));
+    --gradient-dark: linear-gradient(180deg, hsl(220 32% 8%), hsl(220 28% 12%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 32% 8%) 0%, hsl(217 44% 15%) 50%, hsl(220 30% 12%) 100%);
+
+    --shadow-gold: 0 4px 20px -5px hsl(208 100% 56% / 0.35);
+    --shadow-soft: 0 4px 30px -10px hsl(220 50% 2% / 0.45);
+    --shadow-elevated: 0 20px 40px -15px hsl(220 50% 2% / 0.5);
+  }
+
   /* base elements */
   * {
     @apply border-border;
@@ -62,6 +100,10 @@
 
   body {
     @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] font-body antialiased font-semibold;
+  }
+
+  :root[data-contrast-mode="high"] body {
+    text-rendering: optimizeLegibility;
   }
 
   h1, h2, h3, h4, h5, h6 {

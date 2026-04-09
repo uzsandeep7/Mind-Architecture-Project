@@ -1,284 +1,214 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Star, Filter, Search, BookOpen, Headphones, FileText, Crown, Lock } from "lucide-react";
-import { useState } from "react";
+import { ShoppingCart, Star, Filter, Search, Crown, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Book {
-  id: number;
+type Book = {
+  id: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   description: string;
   price: number;
   memberPrice: number;
   rating: number;
   reviewCount: number;
-  format: string[];
   coverUrl: string;
   category: string;
-  bestseller?: boolean;
   isPremiumOnly?: boolean;
-}
-
-const allBooks: Book[] = [
-  {
-    id: 1,
-    title: "Intentional Reset",
-    subtitle: "Reset your Mind to unlock Success & Balance",
-    description: "The definitive guide to restructuring your mental frameworks for lasting success. Learn the principles that have transformed over 50,000 lives.",
-    price: 29.99,
-    memberPrice: 22.49,
-    rating: 4.9,
-    reviewCount: 1247,
-    format: ["Hardcover", "Paperback", "Digital", "Audiobook"],
-    coverUrl: "/Book1.jpg",
-    category: "Personal Development",
-    bestseller: true,
-    
-  },
-  {
-    id: 2,
-    title: "The Breakthrough Blueprint",
-    subtitle: "5 Steps to Transform Your Life",
-    description: "A practical, step-by-step framework for breaking through limiting beliefs and achieving extraordinary results.",
-    price: 24.99,
-    memberPrice: 18.74,
-    rating: 4.8,
-    reviewCount: 892,
-    format: ["Paperback", "Digital", "Audiobook"],
-    coverUrl: "/placeholder.svg",
-    category: "Self-Help",
-  },
-  {
-    id: 3,
-    title: "Resilient Mindset",
-    subtitle: "Thriving Through Adversity",
-    description: "Discover how to build unshakeable mental resilience and turn life's challenges into opportunities for growth.",
-    price: 27.99,
-    memberPrice: 20.99,
-    rating: 4.7,
-    reviewCount: 654,
-    format: ["Hardcover", "Digital"],
-    coverUrl: "/placeholder.svg",
-    category: "Mental Health",
-    
-  },
-  {
-    id: 4,
-    title: "Leadership From Within",
-    subtitle: "The Inner Game of Great Leaders",
-    description: "Master the internal dynamics that separate good leaders from truly exceptional ones.",
-    price: 32.99,
-    memberPrice: 24.74,
-    rating: 4.9,
-    reviewCount: 423,
-    format: ["Hardcover", "Digital", "Audiobook"],
-    coverUrl: "/placeholder.svg",
-    category: "Leadership",
-    bestseller: true,
-  },
-  {
-    id: 5,
-    title: "The Focused Mind",
-    subtitle: "Mastering Attention in a Distracted World",
-    description: "Practical strategies for developing laser-like focus and maximizing your productivity.",
-    price: 22.99,
-    memberPrice: 17.24,
-    rating: 4.6,
-    reviewCount: 567,
-    format: ["Paperback", "Digital"],
-    coverUrl: "/placeholder.svg",
-    category: "Productivity",
-  },
-  {
-    id: 6,
-    title: "Emotional Intelligence Mastery",
-    subtitle: "The Key to Personal and Professional Success",
-    description: "Unlock the power of emotional intelligence to enhance every relationship and achieve your goals.",
-    price: 26.99,
-    memberPrice: 20.24,
-    rating: 4.8,
-    reviewCount: 789,
-    format: ["Hardcover", "Paperback", "Digital"],
-    coverUrl: "/placeholder.svg",
-    category: "Personal Development",
-    isPremiumOnly: true,
-  },
-];
-
-const categories = ["All", "Personal Development", "Self-Help", "Leadership", "Mental Health", "Productivity"];
-
-const formatIcons: Record<string, React.ElementType> = {
-  Hardcover: BookOpen,
-  Paperback: BookOpen,
-  Digital: FileText,
-  Audiobook: Headphones,
 };
 
-const BookCard = ({ book, index, onAddToCart }: { book: Book; index: number; onAddToCart: (book: Book) => void }) => {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border relative"
-    >
-      <div className="relative h-64 overflow-hidden">
-        <img
-          src={book.coverUrl}
-          alt={book.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-          {book.bestseller && (
-            <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-              Bestseller
-            </span>
-          )}
-          {book.isPremiumOnly && (
-            <span className="px-3 py-1 bg-amber-500 text-black text-xs font-semibold rounded-full flex items-center gap-1">
-              <Crown className="w-3 h-3" />
-              Premium Only
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="p-6">
-        <div className="flex items-center gap-1 mb-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star
-              key={i}
-              size={14}
-              className={i < Math.floor(book.rating) ? "fill-primary text-primary" : "text-muted"}
-            />
-          ))}
-          <span className="text-xs text-muted-foreground ml-1">
-            ({book.reviewCount} reviews)
+const BookCard = ({
+  book,
+  index,
+  onAddToCart,
+  isMember,
+}: {
+  book: Book;
+  index: number;
+  onAddToCart: (book: Book) => void;
+  isMember: boolean;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay: index * 0.1 }}
+    className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft hover-lift"
+  >
+    <div className="relative h-64 overflow-hidden">
+      <img src={book.coverUrl} alt={book.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+      <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+        <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">{book.category}</span>
+        {book.isPremiumOnly ? (
+          <span className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
+            <Crown className="h-3 w-3" />
+            Premium Only
           </span>
-        </div>
+        ) : null}
+      </div>
+    </div>
 
-        <h3 className="text-xl font-heading font-bold mb-1 group-hover:text-primary transition-colors">
-          {book.title}
-        </h3>
-        <p className="text-sm text-muted-foreground mb-3">{book.subtitle}</p>
-        <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{book.description}</p>
+    <div className="flex flex-1 flex-col p-6">
+      <div className="mb-2 flex items-center gap-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star key={i} size={14} className={i < Math.floor(book.rating) ? "fill-primary text-primary" : "text-muted"} />
+        ))}
+        <span className="ml-1 text-xs text-muted-foreground">({book.reviewCount} reviews)</span>
+      </div>
 
-        <div className="flex items-center gap-2 mb-4">
-          {book.format.map((fmt) => {
-            const Icon = formatIcons[fmt] || BookOpen;
-            return (
-              <div
-                key={fmt}
-                className="flex items-center gap-1 px-2 py-1 bg-secondary rounded text-xs"
-                title={fmt}
-              >
-                <Icon size={12} />
-              </div>
-            );
-          })}
-        </div>
+      <h3 className="mb-1 text-xl font-heading font-bold transition-colors group-hover:text-primary">{book.title}</h3>
+      <p className="mb-3 text-sm text-muted-foreground">{book.subtitle}</p>
+      <p className="mb-4 min-h-[3.5rem] line-clamp-2 text-sm text-muted-foreground">{book.description}</p>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <div>
-            <p className="text-sm font-heading line-through text-muted-foreground">
-              ${book.price}
-            </p>
-            <p className="text-xl font-heading font-bold text-primary flex items-center gap-1">
-              <Crown className="w-4 h-4" />
-              ${book.memberPrice}
-            </p>
-          </div>
-          {book.isPremiumOnly ? (
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/membership">
-                <Lock size={14} className="mr-1" />
-                Unlock
-              </Link>
-            </Button>
+      <div className="mt-auto flex items-end justify-between gap-4 border-t border-border pt-4">
+        <div className="min-w-0 flex-1">
+          {isMember && book.memberPrice < book.price ? (
+            <>
+              <p className="text-sm font-heading text-muted-foreground line-through">${book.price.toFixed(2)}</p>
+              <p className="flex flex-wrap items-baseline gap-1 text-xl font-heading font-bold text-primary leading-none">
+                <Crown className="h-4 w-4" />
+                ${book.memberPrice.toFixed(2)}
+              </p>
+            </>
           ) : (
-            <Button variant="gold" size="sm" onClick={() => onAddToCart(book)}>
-              <ShoppingCart size={14} />
-              Add to Cart
-            </Button>
+            <>
+              <p className="text-xl font-heading font-bold leading-none">${book.price.toFixed(2)}</p>
+              {book.memberPrice < book.price ? (
+                <p className="mt-2 text-xs font-medium text-amber-500">Members pay ${book.memberPrice.toFixed(2)}</p>
+              ) : null}
+            </>
           )}
         </div>
+        {book.isPremiumOnly && !isMember ? (
+          <Button variant="outline" size="sm" className="shrink-0 min-w-[120px]" asChild>
+            <Link to="/membership">
+              <Lock size={14} className="mr-1" />
+              Unlock
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="gold" size="sm" className="shrink-0 min-w-[120px]" onClick={() => onAddToCart(book)}>
+            <ShoppingCart size={14} />
+            Add to Cart
+          </Button>
+        )}
       </div>
-    </motion.div>
-  );
-};
+    </div>
+  </motion.div>
+);
 
 const BooksPage = () => {
+  const { addToCart } = useCart();
+  const { user, isAdmin, isMember } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [books, setBooks] = useState<Book[]>([]);
+  const [isLoadingBooks, setIsLoadingBooks] = useState(true);
   const navigate = useNavigate();
 
-  const filteredBooks = allBooks.filter((book) => {
+  useEffect(() => {
+    const loadBooks = async () => {
+      setIsLoadingBooks(true);
+      const { data } = await supabase
+        .from("books")
+        .select("*")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false });
+
+      setBooks(
+        (data ?? []).map((book) => ({
+          id: book.id,
+          title: book.title,
+          subtitle: book.category || "Mind Architecture Resource",
+          description: book.description || "Transformative reading to support your personal and professional growth.",
+          price: Number(book.price),
+          memberPrice: Number(book.member_price ?? book.price),
+          rating: 4.8,
+          reviewCount: 120,
+          coverUrl: book.cover_image_url || "/placeholder.svg",
+          category: book.category || "General",
+          isPremiumOnly: Boolean(book.is_members_only),
+        })),
+      );
+      setIsLoadingBooks(false);
+    };
+
+    void loadBooks();
+  }, []);
+
+  const categories = useMemo(
+    () => ["All", ...Array.from(new Set(books.map((book) => book.category).filter(Boolean))).sort()],
+    [books],
+  );
+
+  const filteredBooks = books.filter((book) => {
     const matchesCategory = selectedCategory === "All" || book.category === selectedCategory;
-    const matchesSearch = book.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = book.title.toLowerCase().includes(q) || book.description.toLowerCase().includes(q);
     return matchesCategory && matchesSearch;
   });
 
-  const handleAddToCart = (book: Book) => {
-    toast.success(`${book.title} added to cart!`);
-    navigate("/cart");
+  const handleAddToCart = async (book: Book) => {
+    if (!user) {
+      toast.error("Please sign in to add books to your cart");
+      navigate("/auth");
+      return;
+    }
+
+    if (isAdmin) {
+      toast.error("Admin and owner accounts cannot place customer book orders");
+      return;
+    }
+
+    if (book.isPremiumOnly && !isMember) {
+      toast.error("This book is available to premium members only");
+      navigate("/membership");
+      return;
+    }
+
+    try {
+      await addToCart(book.id);
+      toast.success(`${book.title} added to cart!`);
+      navigate("/cart");
+    } catch (error) {
+      console.error("Error adding book to cart:", error);
+      toast.error("Failed to add this book to cart");
+    }
   };
 
   return (
     <Layout>
-      {/* Hero */}
-      <section className="pt-32 pb-16 bg-gradient-hero text-cream">
+      <section className="bg-gradient-hero pb-16 pt-32 text-cream">
         <div className="container-wide">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl"
-          >
-            <span className="text-primary font-medium tracking-widest uppercase text-sm">
-              Publications
-            </span>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold mt-4 mb-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
+            <span className="text-sm font-medium uppercase tracking-widest text-primary">Publications</span>
+            <h1 className="mb-6 mt-4 text-4xl font-heading font-bold md:text-5xl lg:text-6xl">
               Wisdom In
               <span className="text-gradient-gold"> Your Hands</span>
             </h1>
-            <p className="text-cream/70 text-lg">
-              Explore our collection of transformative books and guides designed to help 
-              you build the mindset for success.
+            <p className="text-lg text-cream/70">
+              Explore live backend-managed books and resources without the old planted frontend content.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Member Pricing Banner */}
-      <section className="py-4 bg-primary/10 border-b border-primary/20">
+      <section className="sticky top-16 z-30 border-b border-border bg-background/95 py-8 backdrop-blur-md">
         <div className="container-wide">
-          <div className="flex items-center justify-center gap-2 text-sm">
-            <Crown className="w-4 h-4 text-primary" />
-            <span>
-              <strong className="text-primary">Premium Members</strong> save up to 25% on all books
-            </span>
-            <Link to="/membership" className="text-primary underline hover:no-underline ml-2">
-              Learn more →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="py-8 bg-background border-b border-border sticky top-20 z-30 backdrop-blur-md bg-background/95">
-        <div className="container-wide">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-              <Filter size={18} className="text-muted-foreground shrink-0" />
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <div className="flex w-full items-center gap-2 overflow-x-auto pb-2 md:w-auto md:pb-0">
+              <Filter size={18} className="shrink-0 text-muted-foreground" />
               {categories.map((category) => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
                     selectedCategory === category
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
@@ -301,18 +231,19 @@ const BooksPage = () => {
         </div>
       </section>
 
-      {/* Books Grid */}
       <section className="section-padding bg-background">
         <div className="container-wide">
-          {filteredBooks.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {isLoadingBooks ? (
+            <div className="py-16 text-center text-lg text-muted-foreground">Loading books...</div>
+          ) : filteredBooks.length > 0 ? (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {filteredBooks.map((book, index) => (
-                <BookCard key={book.id} book={book} index={index} onAddToCart={handleAddToCart} />
+                <BookCard key={book.id} book={book} index={index} onAddToCart={handleAddToCart} isMember={isMember} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground text-lg">No books found matching your criteria.</p>
+            <div className="py-16 text-center">
+              <p className="text-lg text-muted-foreground">No books available right now.</p>
             </div>
           )}
         </div>

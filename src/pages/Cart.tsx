@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const CartPage = () => {
   const { items, itemCount, totalPrice, updateQuantity, removeFromCart, isLoading } = useCart();
-  const { user } = useAuth();
+  const { user, isMember } = useAuth();
   const navigate = useNavigate();
 
   if (!user) {
@@ -137,7 +137,7 @@ const CartPage = () => {
                       </div>
                       <div className="flex items-center gap-4">
                         <p className="font-bold text-lg">
-                          ${((item.book?.price || 0) * item.quantity).toFixed(2)}
+                          ${(((isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0) * item.quantity).toFixed(2)}
                         </p>
                         <Button
                           variant="ghost"

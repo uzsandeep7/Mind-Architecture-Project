@@ -1,99 +1,129 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowRight, Heart, Lightbulb, Shield } from "lucide-react";
+import { ArrowRight, Clock, Crown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-const coreInsights = [
-  {
-    id: "1",
-    title: "Navigating Stress with Resilience",
-    slug: "navigating-stress-resilience",
-    excerpt: "Learn practical strategies to transform workplace stress into opportunities for growth and connection.",
-    icon: Shield,
-    tags: ["Resilience", "Wellbeing"],
-  },
-  {
-    id: "2",
-    title: "Building Belonging in Teams",
-    slug: "building-belonging-teams",
-    excerpt: "Discover how to create cultures of care where every team member feels valued, heard, and empowered.",
-    icon: Heart,
-    tags: ["Leadership", "Community"],
-  },
-  {
-    id: "3",
-    title: "From Burnout to Balance",
-    slug: "burnout-to-balance",
-    excerpt: "Practical pathways to reset, reconnect, and rise after experiencing professional burnout.",
-    icon: Lightbulb,
-    tags: ["Balance", "Recovery"],
-  },
-];
+type BlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  cover_image_url: string | null;
+  tags: string[] | null;
+  read_time_minutes: number | null;
+  is_members_only: boolean;
+};
 
 export const BlogSection = () => {
+  const { isMember } = useAuth();
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      const { data } = await supabase
+        .from("blog_posts")
+        .select("*")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(3);
+
+      setPosts(data ?? []);
+    };
+
+    void loadPosts();
+  }, []);
+
+  if (posts.length === 0) return null;
+
   return (
-    <section className="py-24 bg-secondary/30">
+    <section className="bg-secondary/30 py-24">
       <div className="container-wide">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="mb-16 text-center"
         >
           <Badge variant="outline" className="mb-4">
             Core Insights
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-heading font-bold mb-4">
+          <h2 className="mb-4 text-4xl font-heading font-bold md:text-5xl">
             Resilience Resources
           </h2>
-          <p className="text-muted-foreground max-w-3xl mx-auto text-lg">
-            Empowering leaders to reset, reconnect, and rise. Explore transformative 
-            ideas and practical strategies for building resilience and belonging.
+          <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
+            This homepage section only appears when live blog posts have been added from the backend.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {coreInsights.map((insight, index) => (
+        <div className="mb-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {posts.map((post, index) => (
             <motion.article
-              key={insight.id}
+              key={post.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl"
+              className="group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
             >
-              <div className="p-8">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
-                  <insight.icon className="text-primary" size={28} />
+              <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`}>
+                <div className="relative aspect-video overflow-hidden bg-muted">
+                  <img
+                    src={post.cover_image_url || "/placeholder.svg"}
+                    alt={post.title}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {post.is_members_only ? (
+                    <div className="absolute right-4 top-4">
+                      <Badge className="bg-amber-500 text-black">
+                        <Crown className="mr-1 h-3 w-3" />
+                        Members Only
+                      </Badge>
+                    </div>
+                  ) : null}
                 </div>
-                
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {insight.tags.map((tag) => (
+              </Link>
+
+              <div className="p-8">
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {post.tags?.map((tag) => (
                     <Badge key={tag} variant="secondary" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
                 </div>
-                
-                <Link to={`/blog/${insight.slug}`}>
-                  <h3 className="text-xl font-heading font-semibold mb-3 group-hover:text-primary transition-colors">
-                    {insight.title}
+
+                <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`}>
+                  <h3 className="mb-3 text-xl font-heading font-semibold transition-colors group-hover:text-primary">
+                    {post.title}
                   </h3>
                 </Link>
-                
-                <p className="text-muted-foreground mb-4">
-                  {insight.excerpt}
+
+                <p className="mb-4 text-muted-foreground">
+                  {post.excerpt || "Live backend-managed article content."}
                 </p>
-                
-                <Link 
-                  to={`/blog/${insight.slug}`}
-                  className="text-primary font-medium inline-flex items-center gap-2 hover:gap-3 transition-all"
-                >
-                  Read More
-                  <ArrowRight size={16} />
-                </Link>
+
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {post.read_time_minutes || 5} min read
+                  </span>
+                  <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`} className="inline-flex items-center gap-2 font-medium text-primary transition-all hover:gap-3">
+                    {post.is_members_only && !isMember ? (
+                      <>
+                        <Lock className="h-4 w-4" />
+                        Unlock
+                      </>
+                    ) : (
+                      "Read More"
+                    )}
+                    <ArrowRight size={16} />
+                  </Link>
+                </div>
               </div>
             </motion.article>
           ))}
@@ -109,7 +139,7 @@ export const BlogSection = () => {
           <Button variant="goldOutline" size="lg" asChild>
             <Link to="/blog">
               Explore All Resources
-              <ArrowRight className="ml-2 w-4 h-4" />
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
         </motion.div>

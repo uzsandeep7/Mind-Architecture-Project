@@ -14,10 +14,12 @@ import {
   Settings,
   ShoppingBag,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EventBooking {
   id: string;
@@ -49,84 +51,96 @@ interface Profile {
   avatar_url: string | null;
 }
 
-// Mock data
-const mockEventBookings: EventBooking[] = [
-  {
-    id: "1",
-    seats: 2,
-    status: "confirmed",
-    total_amount: 199.98,
-    created_at: new Date().toISOString(),
-    event: {
-      title: "Resilience Leadership Workshop",
-      date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      venue: "Sydney Convention Centre",
-    },
-  },
-  {
-    id: "2",
-    seats: 1,
-    status: "pending",
-    total_amount: 149.99,
-    created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    event: {
-      title: "Mind Architecture Masterclass",
-      date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      venue: "Melbourne Business Hub",
-    },
-  },
-];
-
-const mockOrders: Order[] = [
-  {
-    id: "ORD12345",
-    status: "delivered",
-    total_amount: 54.98,
-    created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    order_items: [
-      { quantity: 1, price: 29.99, book: { title: "Mind Architecture" } },
-      { quantity: 1, price: 24.99, book: { title: "The Breakthrough Blueprint" } },
-    ],
-  },
-];
-
-const mockConsultations: Consultation[] = [
-  {
-    id: "1",
-    date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-    topic: "Executive Burnout Recovery",
-    status: "confirmed",
-    created_at: new Date().toISOString(),
-  },
-];
-
-const mockProfile: Profile = {
-  full_name: "Sarah Johnson",
-  avatar_url: null,
-};
-
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Profile | null>(mockProfile);
-  const [eventBookings] = useState<EventBooking[]>(mockEventBookings);
-  const [orders] = useState<Order[]>(mockOrders);
-  const [consultations] = useState<Consultation[]>(mockConsultations);
+  const { user, isLoading, signOut } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [eventBookings] = useState<EventBooking[]>([]);
+  const [orders] = useState<Order[]>([]);
+  const [consultations] = useState<Consultation[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [fullName, setFullName] = useState(mockProfile.full_name || "");
-  const [email, setEmail] = useState("sarah.johnson@example.com");
-  const [phone, setPhone] = useState("+61 412 345 678");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+
+    setEmail(user.email ?? "");
+    setFullName(
+      user.user_metadata?.full_name ??
+      user.user_metadata?.name ??
+      ""
+    );
+
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error loading profile:", error);
+        return;
+      }
+
+      if (data) {
+        setProfile(data);
+        setFullName(
+          data.full_name ??
+          user.user_metadata?.full_name ??
+          user.user_metadata?.name ??
+          ""
+        );
+      } else {
+        setProfile({
+          full_name:
+            user.user_metadata?.full_name ??
+            user.user_metadata?.name ??
+            null,
+          avatar_url: null,
+        });
+      }
+    };
+
+    void loadProfile();
+  }, [user]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
-      setProfile({ ...profile, full_name: fullName });
-      toast.success("Profile updated successfully");
+
+    if (!user) {
       setIsSaving(false);
-    }, 1000);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        full_name: fullName.trim() || null,
+      });
+
+    if (error) {
+      toast.error("Failed to update profile");
+      setIsSaving(false);
+      return;
+    }
+
+    setProfile((prev) => ({
+      full_name: fullName.trim() || null,
+      avatar_url: prev?.avatar_url ?? null,
+    }));
+    toast.success("Profile updated successfully");
+    setIsSaving(false);
   };
 
-  const handleSignOut = () => navigate("/");
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -144,6 +158,36 @@ const DashboardPage = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <section className="pt-32 pb-16 min-h-screen bg-background">
+          <div className="container-wide text-center">
+            <h1 className="text-3xl font-heading font-bold">Loading dashboard...</h1>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Layout>
+        <section className="pt-32 pb-16 min-h-screen bg-background">
+          <div className="container-wide max-w-lg text-center">
+            <h1 className="mb-4 text-3xl font-heading font-bold">Sign In Required</h1>
+            <p className="mb-8 text-muted-foreground">
+              Please sign in to access your dashboard.
+            </p>
+            <Button variant="gold" onClick={() => navigate("/auth")}>
+              Go to Sign In
+            </Button>
+          </div>
+        </section>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       {/* Hero */}
@@ -159,11 +203,12 @@ const DashboardPage = () => {
                 Dashboard
               </span>
               <h1 className="text-4xl md:text-5xl font-heading font-bold mt-4">
-                Welcome,{" "}
+                Hi,{" "}
                 <span className="text-gradient-gold">
-                  {profile?.full_name || "User"}
+                  {profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User"}
                 </span>
               </h1>
+              <p className="mt-2 text-sm text-white/60">{user.email}</p>
             </div>
             <Button
               variant="goldOutline"

@@ -14,7 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, isMember } = useAuth();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -75,7 +75,7 @@ const CheckoutPage = () => {
         order_id: order.id,
         book_id: item.book_id,
         quantity: item.quantity,
-        price: item.book?.price || 0,
+        price: (isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0,
       }));
 
       const { error: itemsError } = await supabase
@@ -355,7 +355,7 @@ const CheckoutPage = () => {
                           {item.book?.title} x{item.quantity}
                         </span>
                         <span>
-                          ${((item.book?.price || 0) * item.quantity).toFixed(2)}
+                          ${(((isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0) * item.quantity).toFixed(2)}
                         </span>
                       </div>
                     ))}

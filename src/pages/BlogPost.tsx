@@ -17,6 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
+import { useAuth } from "@/hooks/useAuth";
 
 interface BlogPost {
   id: string;
@@ -29,6 +30,7 @@ interface BlogPost {
   tags: string[] | null;
   published_at: string | null;
   author_id: string | null;
+  is_members_only: boolean;
 }
 
 interface Comment {
@@ -41,64 +43,10 @@ interface Comment {
   };
 }
 
-// Mock post for initial display
-const mockPost: BlogPost = {
-  id: "1",
-  title: "Unlocking Your Mental Potential",
-  slug: "unlocking-mental-potential",
-  excerpt:
-    "Discover the key strategies to harness the full power of your mind and achieve extraordinary results in every area of life.",
-  content: `
-## Introduction
-
-The human mind is an incredible instrument capable of extraordinary achievements. Yet most of us use only a fraction of our mental potential. This article explores practical strategies for unlocking the full power of your mind.
-
-## The Power of Neuroplasticity
-
-Our brains are remarkably adaptable. Through consistent practice and the right techniques, we can literally rewire our neural pathways to support greater success, creativity, and well-being.
-
-### Key Principles
-
-1. **Consistency Over Intensity**: Small, daily practices compound over time
-2. **Challenge Your Comfort Zone**: Growth happens at the edge of your abilities
-3. **Rest and Recovery**: The brain consolidates learning during rest
-
-## Practical Strategies
-
-### Morning Mindset Rituals
-
-Start each day with intention. Spend 10-15 minutes on activities that prime your mind for success:
-
-- Meditation or deep breathing
-- Journaling your intentions
-- Visualization of your goals
-
-### Continuous Learning
-
-Keep your mind sharp by constantly learning new skills. This builds cognitive reserve and keeps neural pathways strong.
-
-### Physical Exercise
-
-Movement is essential for brain health. Regular exercise increases blood flow to the brain and promotes the growth of new neurons.
-
-## Conclusion
-
-Unlocking your mental potential is not about dramatic transformations overnight. It's about consistent, intentional practices that compound over time. Start small, stay consistent, and watch your potential unfold.
-
----
-
-*Ready to take the next step? Join us at the upcoming Mindset Mastery Summit to dive deeper into these transformative practices.*
-  `,
-  cover_image_url: "/placeholder.svg",
-  read_time_minutes: 8,
-  tags: ["Mindset", "Growth", "Personal Development"],
-  published_at: "2026-01-05",
-  author_id: null,
-};
-
 const BlogPostPage = () => {
+  const { isMember } = useAuth();
   const { slug } = useParams<{ slug: string }>();
-  const [post, setPost] = useState<BlogPost | null>(mockPost);
+  const [post, setPost] = useState<BlogPost | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [user, setUser] = useState<User | null>(null);
@@ -123,7 +71,10 @@ const BlogPostPage = () => {
 
   useEffect(() => {
     const fetchPost = async () => {
-      if (!slug) return;
+      if (!slug) {
+        setLoading(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from("blog_posts")
@@ -136,12 +87,23 @@ const BlogPostPage = () => {
         setPost(data);
         fetchComments(data.id);
         fetchLikes(data.id);
+      } else {
+        setPost(null);
+        setComments([]);
+        setLikes(0);
+        setHasLiked(false);
       }
       setLoading(false);
     };
 
     fetchPost();
   }, [slug]);
+
+  useEffect(() => {
+    if (post && user && !post.id.startsWith("mock-")) {
+      fetchLikes(post.id);
+    }
+  }, [user, post]);
 
   const fetchComments = async (postId: string) => {
     const { data } = await supabase
@@ -242,6 +204,16 @@ const BlogPostPage = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <Layout>
+        <div className="pt-32 pb-16 text-center">
+          <h1 className="text-2xl font-heading">Loading article...</h1>
+        </div>
+      </Layout>
+    );
+  }
+
   if (!post) {
     return (
       <Layout>
@@ -274,6 +246,9 @@ const BlogPostPage = () => {
             </Link>
 
             <div className="flex flex-wrap gap-2 mb-4">
+              {post.is_members_only ? (
+                <Badge className="bg-amber-500 text-black">Members Only</Badge>
+              ) : null}
               {post.tags?.map((tag) => (
                 <Badge key={tag} variant="secondary">
                   {tag}
@@ -325,17 +300,35 @@ const BlogPostPage = () => {
       {/* Content */}
       <section className="pb-16">
         <div className="container max-w-3xl">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="prose prose-lg dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, "<br />") }}
-          />
+          {post.is_members_only && !isMember ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="rounded-2xl border border-amber-500/30 bg-card p-8 text-center"
+            >
+              <h2 className="mb-3 text-2xl font-heading font-bold">Members-only article</h2>
+              <p className="mb-6 text-muted-foreground">
+                Upgrade to premium membership to unlock this full article and the rest of the members-only library.
+              </p>
+              <Button variant="gold" asChild>
+                <Link to="/membership">Unlock with Premium</Link>
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="prose prose-lg dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, "<br />") }}
+            />
+          )}
         </div>
       </section>
 
       {/* Engagement Bar */}
+      {!post.is_members_only || isMember ? (
       <section className="py-8 border-y border-border">
         <div className="container max-w-3xl">
           <div className="flex items-center justify-between">
@@ -365,8 +358,10 @@ const BlogPostPage = () => {
           </div>
         </div>
       </section>
+      ) : null}
 
       {/* Comments */}
+      {!post.is_members_only || isMember ? (
       <section className="py-16">
         <div className="container max-w-3xl">
           <h2 className="text-2xl font-heading font-bold mb-8">
@@ -441,6 +436,7 @@ const BlogPostPage = () => {
           </div>
         </div>
       </section>
+      ) : null}
     </Layout>
   );
 };

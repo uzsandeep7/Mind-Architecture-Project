@@ -1,64 +1,28 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Clock, ArrowRight, Users } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowRight, Users, Crown, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-interface Event {
-  id: number;
+type EventItem = {
+  id: string;
   title: string;
-  description: string;
-  date: Date;
+  description: string | null;
+  date: string;
   venue: string;
   price: number;
-  totalSeats: number;
-  availableSeats: number;
-  imageUrl: string;
-}
-
-const featuredEvents: Event[] = [
-  {
-    id: 1,
-    title: "Mind Architecture Masterclass",
-    description: "A transformative full-day experience to rewire your mindset for success.",
-    date: new Date("2026-02-15T09:00:00"),
-    venue: "Melbourne Convention Centre",
-    price: 299,
-    totalSeats: 500,
-    availableSeats: 127,
-    imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
-  },
-  {
-    id: 2,
-    title: "Breakthrough Weekend Intensive",
-    description: "Two days of deep work to break through your limiting beliefs and unlock potential.",
-    date: new Date("2026-03-22T09:00:00"),
-    venue: "Sydney Opera House",
-    price: 599,
-    totalSeats: 300,
-    availableSeats: 89,
-    imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800",
-  },
-  {
-    id: 3,
-    title: "Corporate Leadership Summit",
-    description: "Empowering executives with mental frameworks for exceptional leadership.",
-    date: new Date("2026-04-10T09:00:00"),
-    venue: "Brisbane Exhibition Centre",
-    price: 449,
-    totalSeats: 200,
-    availableSeats: 156,
-    imageUrl: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800",
-  },
-];
+  total_seats: number;
+  available_seats: number;
+  image_url: string | null;
+  member_price: number | null;
+  is_members_only: boolean;
+};
 
 const calculateTimeLeft = (eventDate: Date) => {
   const difference = eventDate.getTime() - new Date().getTime();
-  
-  if (difference <= 0) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-  }
-
+  if (difference <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   return {
     days: Math.floor(difference / (1000 * 60 * 60 * 24)),
     hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
@@ -67,17 +31,16 @@ const calculateTimeLeft = (eventDate: Date) => {
   };
 };
 
-const EventCard = ({ event, index }: { event: Event; index: number }) => {
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(event.date));
+const EventCard = ({ event, index, isMember }: { event: EventItem; index: number; isMember: boolean }) => {
+  const eventDate = useMemo(() => new Date(event.date), [event.date]);
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(eventDate));
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft(event.date));
-    }, 1000);
+    const timer = setInterval(() => setTimeLeft(calculateTimeLeft(eventDate)), 1000);
     return () => clearInterval(timer);
-  }, [event.date]);
+  }, [eventDate]);
 
-  const seatsPercentage = (event.availableSeats / event.totalSeats) * 100;
+  const seatsPercentage = event.total_seats > 0 ? (event.available_seats / event.total_seats) * 100 : 0;
 
   return (
     <motion.div
@@ -85,18 +48,15 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border"
+      className="group overflow-hidden rounded-xl border border-border bg-card shadow-soft hover-lift"
     >
-      {/* Image */}
       <div className="relative h-48 overflow-hidden">
         <img
-          src={event.imageUrl}
+          src={event.image_url || "/placeholder.svg"}
           alt={event.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-dark/80 to-transparent" />
-        
-        {/* Countdown Timer */}
         <div className="absolute bottom-4 left-4 right-4">
           <div className="grid grid-cols-4 gap-2">
             {[
@@ -104,80 +64,84 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
               { value: timeLeft.hours, label: "Hrs" },
               { value: timeLeft.minutes, label: "Min" },
               { value: timeLeft.seconds, label: "Sec" },
-            ].map((item, i) => (
-              <div key={i} className="text-center bg-dark/60 backdrop-blur-sm rounded-md py-1">
+            ].map((item) => (
+              <div key={item.label} className="rounded-md bg-dark/60 py-1 text-center backdrop-blur-sm">
                 <p className="text-lg font-bold text-cream">{item.value}</p>
-                <p className="text-[10px] text-cream/60 uppercase">{item.label}</p>
+                <p className="text-[10px] uppercase text-cream/60">{item.label}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-6">
-        <h3 className="text-xl font-heading font-bold mb-2 group-hover:text-primary transition-colors">
+        <h3 className="mb-2 text-xl font-heading font-bold transition-colors group-hover:text-primary">
           {event.title}
         </h3>
-        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-          {event.description}
+        <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">
+          {event.description || "Live event content managed directly from the backend."}
         </p>
-
-        {/* Event Details */}
-        <div className="space-y-2 mb-4">
+        <div className="mb-4 space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Calendar size={14} className="text-primary" />
-            <span>
-              {event.date.toLocaleDateString("en-AU", {
-                weekday: "short",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
+            <span>{eventDate.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock size={14} className="text-primary" />
-            <span>
-              {event.date.toLocaleTimeString("en-AU", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
+            <span>{eventDate.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <MapPin size={14} className="text-primary" />
             <span>{event.venue}</span>
           </div>
         </div>
-
-        {/* Seats Availability */}
         <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-1">
+          <div className="mb-1 flex items-center justify-between text-sm">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Users size={14} />
-              {event.availableSeats} seats left
+              {event.available_seats} seats left
             </span>
             <span className={`font-medium ${seatsPercentage < 30 ? "text-destructive" : "text-primary"}`}>
               {seatsPercentage < 30 ? "Selling Fast!" : "Available"}
             </span>
           </div>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${100 - seatsPercentage}%` }}
-            />
+          <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${100 - seatsPercentage}%` }} />
           </div>
         </div>
-
-        {/* Price & CTA */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <p className="text-2xl font-heading font-bold">
-            ${event.price}
-            <span className="text-sm font-body text-muted-foreground">/person</span>
-          </p>
-          <Button variant="gold" size="sm">
-            Book Now
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <div>
+            {isMember && event.member_price !== null && Number(event.member_price) < Number(event.price) ? (
+              <>
+                <p className="text-sm text-muted-foreground line-through">${Number(event.price).toFixed(2)}</p>
+                <p className="flex items-center gap-1 text-2xl font-heading font-bold text-primary">
+                  <Crown className="h-4 w-4" />
+                  ${Number(event.member_price).toFixed(2)}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-heading font-bold">
+                  ${Number(event.price).toFixed(2)}
+                  <span className="text-sm font-body text-muted-foreground">/person</span>
+                </p>
+                {!event.is_members_only && event.member_price !== null && Number(event.member_price) < Number(event.price) ? (
+                  <p className="text-xs text-amber-500">Members pay ${Number(event.member_price).toFixed(2)}</p>
+                ) : null}
+              </>
+            )}
+          </div>
+          <Button variant={event.is_members_only && !isMember ? "outline" : "gold"} size="sm" asChild>
+            <Link to={event.is_members_only && !isMember ? "/membership" : `/events/${event.id}`}>
+              {event.is_members_only && !isMember ? (
+                <>
+                  <Lock size={14} />
+                  Unlock
+                </>
+              ) : (
+                "Book Now"
+              )}
+            </Link>
           </Button>
         </div>
       </div>
@@ -186,42 +150,51 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
 };
 
 export const EventsSection = () => {
+  const { isMember } = useAuth();
+  const [events, setEvents] = useState<EventItem[]>([]);
+
+  useEffect(() => {
+    const loadFeaturedEvents = async () => {
+      const { data } = await supabase
+        .from("events")
+        .select("*")
+        .eq("is_published", true)
+        .order("date", { ascending: true })
+        .limit(3);
+
+      setEvents(data ?? []);
+    };
+
+    void loadFeaturedEvents();
+  }, []);
+
+  if (events.length === 0) return null;
+
   return (
     <section className="section-padding bg-secondary/30">
       <div className="container-wide">
-        {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="mb-12 text-center"
         >
-          <span className="text-primary font-medium tracking-widest uppercase text-sm">
-            Upcoming Events
-          </span>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mt-4 mb-6">
+          <span className="text-sm font-medium uppercase tracking-widest text-primary">Upcoming Events</span>
+          <h2 className="mb-6 mt-4 text-3xl font-heading font-bold md:text-4xl lg:text-5xl">
             Transform Your Life in Person
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Join our transformative live events and experience the power of 
-            mindset change in an immersive environment.
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            These featured events are loaded from the live backend, so the homepage always reflects current admin content.
           </p>
         </motion.div>
 
-        {/* Events Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          {featuredEvents.map((event, index) => (
-            <EventCard key={event.id} event={event} index={index} />
+        <div className="mb-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {events.map((event, index) => (
+            <EventCard key={event.id} event={event} index={index} isMember={isMember} />
           ))}
         </div>
 
-        {/* View All Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center">
           <Link to="/events">
             <Button variant="goldOutline" size="lg">
               View All Events

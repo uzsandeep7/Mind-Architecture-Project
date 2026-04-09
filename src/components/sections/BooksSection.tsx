@@ -1,188 +1,139 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ShoppingCart, Star } from "lucide-react";
+import { ArrowRight, ShoppingCart, Star, Crown, Lock } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-interface Book {
-  id: number;
+type Book = {
+  id: string;
   title: string;
-  subtitle: string;
+  category: string | null;
   price: number;
-  rating: number;
-  format: string;
-  coverUrl: string;
-  featured?: boolean;
-}
+  member_price: number | null;
+  cover_image_url: string | null;
+  description: string | null;
+  is_members_only: boolean;
+};
 
-const books: Book[] = [
-  {
-    id: 1,
-    title: "Mind Architecture",
-    subtitle: "Building the Foundation of Success",
-    price: 29.99,
-    rating: 4.9,
-    format: "Hardcover & Digital",
-    coverUrl: "/placeholder.svg",
-    featured: true,
-  },
-  {
-    id: 2,
-    title: "The Breakthrough Blueprint",
-    subtitle: "5 Steps to Transform Your Life",
-    price: 24.99,
-    rating: 4.8,
-    format: "Paperback & Digital",
-    coverUrl: "/placeholder.svg",
-  },
-  {
-    id: 3,
-    title: "Resilient Mindset",
-    subtitle: "Thriving Through Adversity",
-    price: 27.99,
-    rating: 4.7,
-    format: "Hardcover & Digital",
-    coverUrl: "/placeholder.svg",
-  },
-  {
-    id: 4,
-    title: "Leadership From Within",
-    subtitle: "The Inner Game of Great Leaders",
-    price: 32.99,
-    rating: 4.9,
-    format: "Premium Hardcover",
-    coverUrl: "/placeholder.svg",
-  },
-];
-
-const BookCard = ({ book, index }: { book: Book; index: number }) => {
+const BookCard = ({ book, index, isMember }: { book: Book; index: number; isMember: boolean }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className={`group relative ${book.featured ? "lg:col-span-2 lg:row-span-2" : ""}`}
+      className="group"
     >
-      <div className="h-full bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border">
-        {book.featured ? (
-          // Featured Book Layout
-          <div className="h-full grid lg:grid-cols-2">
-            <div className="relative h-64 lg:h-full overflow-hidden">
-              <img
-                src={book.coverUrl}
-                alt={book.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <div className="absolute top-4 left-4">
-                <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-                  Bestseller
+      <div className="h-full overflow-hidden rounded-xl border border-border bg-card shadow-soft hover-lift">
+        <div className="relative h-56 overflow-hidden">
+          <img
+            src={book.cover_image_url || "/placeholder.svg"}
+            alt={book.title}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div className="absolute top-4 left-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                {book.category || "Book"}
+              </span>
+              {book.is_members_only ? (
+                <span className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
+                  <Crown className="h-3 w-3" />
+                  Members Only
                 </span>
-              </div>
-            </div>
-            <div className="p-8 flex flex-col justify-center">
-              <div className="flex items-center gap-1 mb-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    size={16}
-                    className={i < Math.floor(book.rating) ? "fill-primary text-primary" : "text-muted"}
-                  />
-                ))}
-                <span className="text-sm text-muted-foreground ml-1">({book.rating})</span>
-              </div>
-              <h3 className="text-2xl lg:text-3xl font-heading font-bold mb-2">
-                {book.title}
-              </h3>
-              <p className="text-muted-foreground mb-4">{book.subtitle}</p>
-              <p className="text-sm text-muted-foreground mb-6">{book.format}</p>
-              <div className="flex items-center justify-between">
-                <p className="text-3xl font-heading font-bold text-primary">
-                  ${book.price}
-                </p>
-                <Button variant="gold">
-                  <ShoppingCart size={16} />
-                  Add to Cart
-                </Button>
-              </div>
+              ) : null}
             </div>
           </div>
-        ) : (
-          // Regular Book Layout
-          <div className="h-full flex flex-col">
-            <div className="relative h-56 overflow-hidden">
-              <img
-                src={book.coverUrl}
-                alt={book.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </div>
-            <div className="p-5 flex-1 flex flex-col">
-              <div className="flex items-center gap-1 mb-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    size={12}
-                    className={i < Math.floor(book.rating) ? "fill-primary text-primary" : "text-muted"}
-                  />
-                ))}
-                <span className="text-xs text-muted-foreground ml-1">({book.rating})</span>
-              </div>
-              <h3 className="text-lg font-heading font-bold mb-1 group-hover:text-primary transition-colors">
-                {book.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-2 flex-1">{book.subtitle}</p>
-              <p className="text-xs text-muted-foreground mb-4">{book.format}</p>
-              <div className="flex items-center justify-between pt-4 border-t border-border">
-                <p className="text-xl font-heading font-bold">${book.price}</p>
-                <Button variant="goldOutline" size="sm">
-                  <ShoppingCart size={14} />
-                </Button>
-              </div>
-            </div>
+        </div>
+        <div className="flex h-full flex-col p-5">
+          <div className="mb-2 flex items-center gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} size={12} className={i < 4 ? "fill-primary text-primary" : "text-muted"} />
+            ))}
+            <span className="ml-1 text-xs text-muted-foreground">(4.8)</span>
           </div>
-        )}
+          <h3 className="mb-1 text-lg font-heading font-bold transition-colors group-hover:text-primary">
+            {book.title}
+          </h3>
+          <p className="mb-4 flex-1 text-sm text-muted-foreground line-clamp-2">
+            {book.description || "A live backend-managed book ready for the storefront."}
+          </p>
+          <div className="flex items-center justify-between border-t border-border pt-4">
+            <div>
+              {isMember && book.member_price !== null && Number(book.member_price) < Number(book.price) ? (
+                <>
+                  <p className="text-xs text-muted-foreground line-through">${Number(book.price).toFixed(2)}</p>
+                  <p className="text-xl font-heading font-bold text-primary">${Number(book.member_price).toFixed(2)}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-heading font-bold">${Number(book.price).toFixed(2)}</p>
+                  {!book.is_members_only && book.member_price !== null && Number(book.member_price) < Number(book.price) ? (
+                    <p className="text-xs text-amber-500">Members pay ${Number(book.member_price).toFixed(2)}</p>
+                  ) : null}
+                </>
+              )}
+            </div>
+            <Button variant="goldOutline" size="sm" asChild>
+              <Link to={book.is_members_only && !isMember ? "/membership" : "/books"}>
+                {book.is_members_only && !isMember ? <Lock size={14} /> : <ShoppingCart size={14} />}
+              </Link>
+            </Button>
+          </div>
+        </div>
       </div>
     </motion.div>
   );
 };
 
 export const BooksSection = () => {
+  const { isMember } = useAuth();
+  const [books, setBooks] = useState<Book[]>([]);
+
+  useEffect(() => {
+    const loadBooks = async () => {
+      const { data } = await supabase
+        .from("books")
+        .select("*")
+        .eq("is_published", true)
+        .order("created_at", { ascending: false })
+        .limit(4);
+
+      setBooks(data ?? []);
+    };
+
+    void loadBooks();
+  }, []);
+
+  if (books.length === 0) return null;
+
   return (
     <section className="section-padding bg-background">
       <div className="container-wide">
-        {/* Section Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="mb-12 text-center"
         >
-          <span className="text-primary font-medium tracking-widest uppercase text-sm">
-            Publications
-          </span>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-heading font-bold mt-4 mb-6">
+          <span className="text-sm font-medium uppercase tracking-widest text-primary">Publications</span>
+          <h2 className="mb-6 mt-4 text-3xl font-heading font-bold md:text-4xl lg:text-5xl">
             Wisdom In Your Hands
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Dive deeper into mindset transformation with our collection of 
-            best-selling books and guides.
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            Only live books added from the backend are shown here.
           </p>
         </motion.div>
 
-        {/* Books Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="mb-12 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {books.map((book, index) => (
-            <BookCard key={book.id} book={book} index={index} />
+            <BookCard key={book.id} book={book} index={index} isMember={isMember} />
           ))}
         </div>
 
-        {/* View All Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center">
           <Link to="/books">
             <Button variant="goldOutline" size="lg">
               Browse All Books

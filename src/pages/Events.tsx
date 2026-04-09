@@ -1,122 +1,27 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Clock, Users, Filter, Search, ArrowRight, Crown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Calendar, MapPin, Clock, Users, Filter, Search, ArrowRight, Crown, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-interface Event {
-  id: number;
+type EventItem = {
+  id: string;
   title: string;
-  description: string;
-  date: Date;
+  description: string | null;
+  date: string;
   venue: string;
-  city: string;
   price: number;
-  memberPrice: number;
-  totalSeats: number;
-  availableSeats: number;
-  imageUrl: string;
-  category: string;
-  isPremiumOnly: boolean;
-}
-
-const allEvents: Event[] = [
-  {
-    id: 1,
-    title: "Mind Architecture Masterclass",
-    description: "A transformative full-day experience to rewire your mindset for success. Learn the foundational principles of mental architecture.",
-    date: new Date("2026-02-15T09:00:00"),
-    venue: "Melbourne Convention Centre",
-    city: "Melbourne",
-    price: 299,
-    memberPrice: 209,
-    totalSeats: 500,
-    availableSeats: 127,
-    imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
-    category: "Masterclass",
-    isPremiumOnly: false,
-  },
-  {
-    id: 2,
-    title: "Breakthrough Weekend Intensive",
-    description: "Two days of deep work to break through your limiting beliefs and unlock your true potential.",
-    date: new Date("2026-03-22T09:00:00"),
-    venue: "Sydney Opera House",
-    city: "Sydney",
-    price: 599,
-    memberPrice: 419,
-    totalSeats: 300,
-    availableSeats: 89,
-    imageUrl: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800",
-    category: "Intensive",
-    isPremiumOnly: true,
-  },
-  {
-    id: 3,
-    title: "Corporate Leadership Summit",
-    description: "Empowering executives with mental frameworks for exceptional leadership and team performance.",
-    date: new Date("2026-04-10T09:00:00"),
-    venue: "Brisbane Exhibition Centre",
-    city: "Brisbane",
-    price: 449,
-    memberPrice: 314,
-    totalSeats: 200,
-    availableSeats: 156,
-    imageUrl: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800",
-    category: "Corporate",
-    isPremiumOnly: false,
-  },
-  {
-    id: 4,
-    title: "Mindful Entrepreneur Workshop",
-    description: "Build a business that aligns with your values while maintaining mental clarity and balance.",
-    date: new Date("2026-05-05T10:00:00"),
-    venue: "Perth Convention Centre",
-    city: "Perth",
-    price: 349,
-    memberPrice: 244,
-    totalSeats: 150,
-    availableSeats: 78,
-    imageUrl: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800",
-    category: "Workshop",
-    isPremiumOnly: false,
-  },
-  {
-    id: 5,
-    title: "Resilience & Recovery Retreat",
-    description: "A three-day immersive experience focused on building unshakeable mental resilience.",
-    date: new Date("2026-06-20T08:00:00"),
-    venue: "Gold Coast Retreat Centre",
-    city: "Gold Coast",
-    price: 899,
-    memberPrice: 629,
-    totalSeats: 50,
-    availableSeats: 12,
-    imageUrl: "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800",
-    category: "Retreat",
-    isPremiumOnly: true,
-  },
-  {
-    id: 6,
-    title: "Women in Leadership Forum",
-    description: "Empowering women leaders with strategies for success in male-dominated industries.",
-    date: new Date("2026-07-15T09:00:00"),
-    venue: "Adelaide Convention Centre",
-    city: "Adelaide",
-    price: 399,
-    memberPrice: 279,
-    totalSeats: 250,
-    availableSeats: 198,
-    imageUrl: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?w=800",
-    category: "Forum",
-    isPremiumOnly: false,
-  },
-];
-
-const categories = ["All", "Masterclass", "Intensive", "Corporate", "Workshop", "Retreat", "Forum"];
+  total_seats: number;
+  available_seats: number;
+  image_url: string | null;
+  is_published: boolean | null;
+  member_price: number | null;
+  is_members_only: boolean;
+};
 
 const calculateTimeLeft = (eventDate: Date) => {
   const difference = eventDate.getTime() - new Date().getTime();
@@ -129,12 +34,13 @@ const calculateTimeLeft = (eventDate: Date) => {
   };
 };
 
-const EventCard = ({ event, index }: { event: Event; index: number }) => {
-  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(event.date));
-  const seatsPercentage = (event.availableSeats / event.totalSeats) * 100;
+const EventCard = ({ event, index, isMember }: { event: EventItem; index: number; isMember: boolean }) => {
+  const eventDate = new Date(event.date);
+  const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(eventDate));
+  const seatsPercentage = event.total_seats > 0 ? (event.available_seats / event.total_seats) * 100 : 0;
 
   useEffect(() => {
-    const timer = setInterval(() => setTimeLeft(calculateTimeLeft(event.date)), 1000);
+    const timer = setInterval(() => setTimeLeft(calculateTimeLeft(eventDate)), 1000);
     return () => clearInterval(timer);
   }, [event.date]);
 
@@ -143,26 +49,28 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group bg-card rounded-xl overflow-hidden shadow-soft hover-lift border border-border"
+      className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft hover-lift"
     >
       <Link to={`/events/${event.id}`}>
         <div className="relative h-56 overflow-hidden">
           <img
-            src={event.imageUrl}
+            src={event.image_url || "/placeholder.svg"}
             alt={event.title}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-dark/80 to-transparent" />
-          <div className="absolute top-4 left-4 flex gap-2">
-            <span className="px-3 py-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full">
-              {event.category}
-            </span>
-            {event.isPremiumOnly && (
-              <span className="px-3 py-1 bg-amber-500 text-black text-xs font-semibold rounded-full flex items-center gap-1">
-                <Crown className="w-3 h-3" />
-                Premium
+          <div className="absolute top-4 left-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                Live Event
               </span>
-            )}
+              {event.is_members_only ? (
+                <span className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
+                  <Crown className="h-3 w-3" />
+                  Members Only
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="absolute bottom-4 left-4 right-4">
             <div className="grid grid-cols-4 gap-2">
@@ -171,10 +79,10 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
                 { value: timeLeft.hours, label: "Hrs" },
                 { value: timeLeft.minutes, label: "Min" },
                 { value: timeLeft.seconds, label: "Sec" },
-              ].map((item, i) => (
-                <div key={i} className="text-center bg-dark/60 backdrop-blur-sm rounded-md py-1.5">
+              ].map((item) => (
+                <div key={item.label} className="rounded-md bg-dark/60 py-1.5 text-center backdrop-blur-sm">
                   <p className="text-xl font-bold text-cream">{item.value}</p>
-                  <p className="text-[10px] text-cream/60 uppercase">{item.label}</p>
+                  <p className="text-[10px] uppercase text-cream/60">{item.label}</p>
                 </div>
               ))}
             </div>
@@ -182,71 +90,85 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
         </div>
       </Link>
 
-      <div className="p-6">
+      <div className="flex flex-1 flex-col p-6">
         <Link to={`/events/${event.id}`}>
-          <h3 className="text-xl font-heading font-bold mb-2 group-hover:text-primary transition-colors">
+          <h3 className="mb-2 text-xl font-heading font-bold transition-colors group-hover:text-primary">
             {event.title}
           </h3>
         </Link>
-        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{event.description}</p>
+        <p className="mb-4 min-h-[3.5rem] line-clamp-2 text-sm text-muted-foreground">
+          {event.description || "Join this upcoming event and explore a live Mind Architecture experience."}
+        </p>
 
-        <div className="space-y-2 mb-4">
+        <div className="mb-4 space-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Calendar size={14} className="text-primary" />
-            <span>
-              {event.date.toLocaleDateString("en-AU", {
-                weekday: "short",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
+            <span>{eventDate.toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Clock size={14} className="text-primary" />
-            <span>
-              {event.date.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}
-            </span>
+            <span>{eventDate.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <MapPin size={14} className="text-primary" />
-            <span>{event.venue}, {event.city}</span>
+            <span>{event.venue}</span>
           </div>
         </div>
 
         <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-1">
+          <div className="mb-1 flex items-center justify-between text-sm">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Users size={14} />
-              {event.availableSeats} seats left
+              {event.available_seats} seats left
             </span>
             <span className={`font-medium ${seatsPercentage < 30 ? "text-destructive" : "text-primary"}`}>
               {seatsPercentage < 30 ? "Selling Fast!" : "Available"}
             </span>
           </div>
-          <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+          <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
             <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
+              className="h-full rounded-full bg-primary transition-all duration-500"
               style={{ width: `${100 - seatsPercentage}%` }}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <div>
-            <p className="text-lg font-heading font-bold line-through text-muted-foreground">
-              ${event.price}
-            </p>
-            <p className="text-xl font-heading font-bold text-primary flex items-center gap-1">
-              <Crown className="w-4 h-4" />
-              ${event.memberPrice}
-              <span className="text-xs font-body text-muted-foreground">/member</span>
-            </p>
+        <div className="mt-auto flex items-end justify-between gap-4 border-t border-border pt-4">
+          <div className="min-w-0 flex-1">
+            {isMember && event.member_price !== null && Number(event.member_price) < Number(event.price) ? (
+              <>
+                <p className="text-sm text-muted-foreground line-through">${Number(event.price).toFixed(2)}</p>
+                <p className="flex flex-wrap items-baseline gap-1 text-2xl font-heading font-bold text-primary leading-none">
+                  <Crown className="h-4 w-4" />
+                  ${Number(event.member_price).toFixed(2)}
+                  <span className="text-sm font-body text-muted-foreground">/person</span>
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="flex flex-wrap items-baseline gap-1 text-2xl font-heading font-bold leading-none">
+                  ${Number(event.price).toFixed(2)}
+                  <span className="text-sm font-body text-muted-foreground">/person</span>
+                </p>
+                {!event.is_members_only && event.member_price !== null && Number(event.member_price) < Number(event.price) ? (
+                  <p className="mt-2 text-xs font-medium text-amber-500">Members pay ${Number(event.member_price).toFixed(2)}</p>
+                ) : null}
+              </>
+            )}
           </div>
-          <Button variant="gold" size="sm" asChild>
-            <Link to={`/events/${event.id}`}>
-              View Details
-              <ArrowRight size={14} />
+          <Button variant={event.is_members_only && !isMember ? "outline" : "gold"} size="sm" className="shrink-0 min-w-[148px]" asChild>
+            <Link to={event.is_members_only && !isMember ? "/membership" : `/events/${event.id}`}>
+              {event.is_members_only && !isMember ? (
+                <>
+                  <Lock size={14} />
+                  Unlock
+                </>
+              ) : (
+                <>
+                  View Details
+                  <ArrowRight size={14} />
+                </>
+              )}
             </Link>
           </Button>
         </div>
@@ -256,74 +178,83 @@ const EventCard = ({ event, index }: { event: Event; index: number }) => {
 };
 
 const EventsPage = () => {
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const { isMember } = useAuth();
+  const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVenue, setSelectedVenue] = useState("All");
+  const [isLoading, setIsLoading] = useState(true);
 
-  const filteredEvents = allEvents.filter((event) => {
-    const matchesCategory = selectedCategory === "All" || event.category === selectedCategory;
-    const matchesSearch =
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.city.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  useEffect(() => {
+    const loadEvents = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .eq("is_published", true)
+        .order("date", { ascending: true });
+
+      if (!error) {
+        setEvents(data ?? []);
+      }
+      setIsLoading(false);
+    };
+
+    void loadEvents();
+  }, []);
+
+  const venues = useMemo(
+    () => ["All", ...Array.from(new Set(events.map((event) => event.venue).filter(Boolean))).sort()],
+    [events],
+  );
+
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        const q = searchQuery.toLowerCase();
+        const matchesVenue = selectedVenue === "All" || event.venue === selectedVenue;
+        return (
+          matchesVenue &&
+          event.title.toLowerCase().includes(q) ||
+          matchesVenue && event.venue.toLowerCase().includes(q) ||
+          matchesVenue && (event.description || "").toLowerCase().includes(q)
+        );
+      }),
+    [events, searchQuery, selectedVenue],
+  );
 
   return (
     <Layout>
-      {/* Hero */}
-      <section className="pt-32 pb-16 bg-gradient-hero text-cream">
+      <section className="bg-gradient-hero pb-16 pt-32 text-cream">
         <div className="container-wide">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-3xl"
-          >
-            <span className="text-primary font-medium tracking-widest uppercase text-sm">
-              Live Events
-            </span>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold mt-4 mb-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
+            <span className="text-sm font-medium uppercase tracking-widest text-primary">Live Events</span>
+            <h1 className="mb-6 mt-4 text-4xl font-heading font-bold md:text-5xl lg:text-6xl">
               Transform Your Life
               <span className="text-gradient-gold"> In Person</span>
             </h1>
-            <p className="text-cream/70 text-lg">
-              Join our transformative live events and experience the power of mindset 
-              change in an immersive, high-energy environment.
+            <p className="text-lg text-cream/70">
+              Browse upcoming Mind Architecture events powered directly from the live backend.
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Member Pricing Banner */}
-      <section className="py-4 bg-primary/10 border-b border-primary/20">
+      <section className="sticky top-16 z-30 border-b border-border bg-background/95 py-8 backdrop-blur-md">
         <div className="container-wide">
-          <div className="flex items-center justify-center gap-2 text-sm">
-            <Crown className="w-4 h-4 text-primary" />
-            <span>
-              <strong className="text-primary">Premium Members</strong> save up to 30% on all events
-            </span>
-            <Link to="/membership" className="text-primary underline hover:no-underline ml-2">
-              Learn more →
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="py-8 bg-background border-b border-border sticky top-20 z-30 backdrop-blur-md bg-background/95">
-        <div className="container-wide">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
-              <Filter size={18} className="text-muted-foreground shrink-0" />
-              {categories.map((category) => (
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <div className="flex w-full items-center gap-2 overflow-x-auto pb-2 md:w-auto md:pb-0">
+              <Filter size={18} className="shrink-0 text-muted-foreground" />
+              {venues.map((venue) => (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                    selectedCategory === category
+                  key={venue}
+                  onClick={() => setSelectedVenue(venue)}
+                  className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                    selectedVenue === venue
                       ? "bg-primary text-primary-foreground"
                       : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   }`}
                 >
-                  {category}
+                  {venue}
                 </button>
               ))}
             </div>
@@ -340,20 +271,19 @@ const EventsPage = () => {
         </div>
       </section>
 
-      {/* Events Grid */}
       <section className="section-padding bg-background">
         <div className="container-wide">
-          {filteredEvents.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {isLoading ? (
+            <div className="py-16 text-center text-lg text-muted-foreground">Loading events...</div>
+          ) : filteredEvents.length > 0 ? (
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {filteredEvents.map((event, index) => (
-                <EventCard key={event.id} event={event} index={index} />
+                <EventCard key={event.id} event={event} index={index} isMember={isMember} />
               ))}
             </div>
           ) : (
-            <div className="text-center py-16">
-              <p className="text-muted-foreground text-lg">
-                No events found matching your criteria.
-              </p>
+            <div className="py-16 text-center">
+              <p className="text-lg text-muted-foreground">No live events available right now.</p>
             </div>
           )}
         </div>

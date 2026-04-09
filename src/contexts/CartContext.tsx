@@ -11,6 +11,8 @@ interface CartItem {
     title: string;
     author: string;
     price: number;
+    member_price: number | null;
+    is_members_only: boolean;
     cover_image_url: string | null;
   };
 }
@@ -41,11 +43,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [isMember, setIsMember] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
+        if (!session?.user) {
+          setIsMember(false);
+        }
       }
     );
 
@@ -58,11 +64,28 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (user) {
+      void loadMembershipTier(user.id);
       refreshCart();
     } else {
       setItems([]);
     }
   }, [user]);
+
+  const loadMembershipTier = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("membership_tier")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error loading membership tier:", error);
+      setIsMember(false);
+      return;
+    }
+
+    setIsMember(data?.membership_tier === "premium");
+  };
 
   const refreshCart = async () => {
     if (!user) return;
@@ -75,13 +98,15 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
           id,
           book_id,
           quantity,
-          book:books (
-            id,
-            title,
-            author,
-            price,
-            cover_image_url
-          )
+            book:books (
+              id,
+              title,
+              author,
+              price,
+              member_price,
+              is_members_only,
+              cover_image_url
+            )
         `)
         .eq("user_id", user.id);
 
@@ -96,6 +121,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addToCart = async (bookId: string) => {
     if (!user) throw new Error("Must be logged in to add to cart");
+
+    const { data: book, error: bookError } = await supabase
+      .from("books")
+      .select("is_members_only")
+      .eq("id", bookId)
+      .maybeSingle();
+
+    if (bookError) throw bookError;
+    if (book?.is_members_only && !isMember) {
+      throw new Error("This book is available to premium members only");
+    }
 
     const existingItem = items.find((item) => item.book_id === bookId);
     
@@ -156,7 +192,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce(
-    (sum, item) => sum + (item.book?.price || 0) * item.quantity,
+    (sum, item) =>
+      sum +
+      ((isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0) * item.quantity,
     0
   );
 

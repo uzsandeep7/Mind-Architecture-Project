@@ -180,10 +180,10 @@ const ConsultationPage = () => {
                 <CheckCircle className="w-10 h-10 text-primary" />
               </div>
               <h1 className="text-3xl font-heading font-bold mb-4">
-                Consultation Booked!
+                Consultation Request Received
               </h1>
               <p className="text-muted-foreground mb-8">
-                Your consultation request has been submitted. If you booked via the calendar, it should appear in the admin schedule.
+                Your consultation request has been submitted successfully. If you used the embedded calendar, your preferred slot has been noted for confirmation.
                 We’ll send confirmation details shortly.
               </p>
               <div className="flex gap-4 justify-center">

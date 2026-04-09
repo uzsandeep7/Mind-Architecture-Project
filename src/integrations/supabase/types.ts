@@ -86,6 +86,7 @@ export type Database = {
           created_at: string | null
           excerpt: string | null
           id: string
+          is_members_only: boolean
           is_published: boolean | null
           published_at: string | null
           read_time_minutes: number | null
@@ -101,6 +102,7 @@ export type Database = {
           created_at?: string | null
           excerpt?: string | null
           id?: string
+          is_members_only?: boolean
           is_published?: boolean | null
           published_at?: string | null
           read_time_minutes?: number | null
@@ -116,6 +118,7 @@ export type Database = {
           created_at?: string | null
           excerpt?: string | null
           id?: string
+          is_members_only?: boolean
           is_published?: boolean | null
           published_at?: string | null
           read_time_minutes?: number | null
@@ -134,7 +137,9 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_members_only: boolean
           is_published: boolean | null
+          member_price: number | null
           price: number
           stock: number
           title: string
@@ -147,7 +152,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_members_only?: boolean
           is_published?: boolean | null
+          member_price?: number | null
           price: number
           stock?: number
           title: string
@@ -160,7 +167,9 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_members_only?: boolean
           is_published?: boolean | null
+          member_price?: number | null
           price?: number
           stock?: number
           title?: string
@@ -309,7 +318,9 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          is_members_only: boolean
           is_published: boolean | null
+          member_price: number | null
           price: number
           title: string
           total_seats: number
@@ -323,7 +334,9 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_members_only?: boolean
           is_published?: boolean | null
+          member_price?: number | null
           price?: number
           title: string
           total_seats?: number
@@ -337,7 +350,9 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          is_members_only?: boolean
           is_published?: boolean | null
+          member_price?: number | null
           price?: number
           title?: string
           total_seats?: number
@@ -460,6 +475,7 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           id: string
+          membership_tier: string
           updated_at: string | null
         }
         Insert: {
@@ -467,6 +483,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id: string
+          membership_tier?: string
           updated_at?: string | null
         }
         Update: {
@@ -474,6 +491,7 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id?: string
+          membership_tier?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -510,7 +528,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "owner" | "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -638,7 +656,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["owner", "admin", "moderator", "user"],
     },
   },
 } as const
