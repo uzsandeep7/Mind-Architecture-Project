@@ -35,6 +35,9 @@ interface Order {
   status: string;
   total_amount: number;
   created_at: string;
+  carrier: string | null;
+  tracking_number: string | null;
+  tracking_url: string | null;
   order_items: { quantity: number; price: number; book: { title: string } | null }[];
 }
 
@@ -49,15 +52,21 @@ interface Consultation {
 interface Profile {
   full_name: string | null;
   avatar_url: string | null;
+  membership_tier: string;
 }
+
+const PENDING_ORDER_EXPIRY_MS = 60 * 60 * 1000;
+
+const buildAustraliaPostTrackingUrl = (trackingNumber: string) =>
+  `https://auspost.com.au/mypost/track/search?trackingNumber=${encodeURIComponent(trackingNumber)}`;
 
 const DashboardPage = () => {
   const navigate = useNavigate();
   const { user, isLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [eventBookings] = useState<EventBooking[]>([]);
-  const [orders] = useState<Order[]>([]);
-  const [consultations] = useState<Consultation[]>([]);
+  const [eventBookings, setEventBookings] = useState<EventBooking[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -74,17 +83,69 @@ const DashboardPage = () => {
     );
 
     const loadProfile = async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
+      const expiryCutoff = new Date(Date.now() - PENDING_ORDER_EXPIRY_MS).toISOString();
+      const { error: expireOrdersError } = await supabase
+        .from("orders")
+        .update({ status: "cancelled" })
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .lt("created_at", expiryCutoff);
 
-      if (error) {
-        console.error("Error loading profile:", error);
-        return;
+      if (expireOrdersError) {
+        console.error("Error expiring pending orders:", expireOrdersError);
       }
 
+      const [
+        profileResult,
+        bookingsResult,
+        ordersResult,
+        consultationsResult,
+      ] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("full_name, avatar_url, membership_tier")
+          .eq("id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("event_bookings")
+          .select("id, seats, status, total_amount, created_at, event:events(title, date, venue)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("orders")
+          .select("id, status, total_amount, created_at, carrier, tracking_number, tracking_url, order_items(quantity, price, book:books(title))")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("consultations")
+          .select("id, date, topic, status, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
+
+      if (profileResult.error) {
+        console.error("Error loading profile:", profileResult.error);
+      }
+
+      if (bookingsResult.error) {
+        console.error("Error loading bookings:", bookingsResult.error);
+      } else {
+        setEventBookings((bookingsResult.data ?? []) as EventBooking[]);
+      }
+
+      if (ordersResult.error) {
+        console.error("Error loading orders:", ordersResult.error);
+      } else {
+        setOrders((ordersResult.data ?? []) as unknown as Order[]);
+      }
+
+      if (consultationsResult.error) {
+        console.error("Error loading consultations:", consultationsResult.error);
+      } else {
+        setConsultations((consultationsResult.data ?? []) as Consultation[]);
+      }
+
+      const data = profileResult.data;
       if (data) {
         setProfile(data);
         setFullName(
@@ -100,6 +161,7 @@ const DashboardPage = () => {
             user.user_metadata?.name ??
             null,
           avatar_url: null,
+          membership_tier: "free",
         });
       }
     };
@@ -209,6 +271,9 @@ const DashboardPage = () => {
                 </span>
               </h1>
               <p className="mt-2 text-sm text-white/60">{user.email}</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.2em] text-yellow-400/90">
+                {profile?.membership_tier === "premium" ? "Premium Member" : "Free Member"}
+              </p>
             </div>
             <Button
               variant="goldOutline"
@@ -330,6 +395,27 @@ const DashboardPage = () => {
                             <p className="text-sm font-medium mt-1 text-white">
                               ${order.total_amount}
                             </p>
+                            {order.tracking_number ? (
+                              <div className="mt-3 space-y-1">
+                                <p className="text-xs text-white/60">
+                                  {order.carrier || "Australia Post"} Tracking: {order.tracking_number}
+                                </p>
+                                <Button
+                                  variant="goldOutline"
+                                  size="sm"
+                                  asChild
+                                  className="h-8 px-3"
+                                >
+                                  <a
+                                    href={order.tracking_url || buildAustraliaPostTrackingUrl(order.tracking_number)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    Track Order
+                                  </a>
+                                </Button>
+                              </div>
+                            ) : null}
                           </div>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(

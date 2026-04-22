@@ -178,7 +178,8 @@ const BooksPage = () => {
       navigate("/cart");
     } catch (error) {
       console.error("Error adding book to cart:", error);
-      toast.error("Failed to add this book to cart");
+      const message = error instanceof Error ? error.message : "Failed to add this book to cart";
+      toast.error(message);
     }
   };
 

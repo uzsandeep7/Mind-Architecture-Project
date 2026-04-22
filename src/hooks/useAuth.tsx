@@ -88,6 +88,11 @@ export const useAuth = () => {
     }
   };
 
+  const refreshUserContext = async () => {
+    if (!user) return;
+    await loadUserContext(user.id);
+  };
+
   const displayName =
     profile?.full_name?.trim() ||
     user?.user_metadata?.full_name ||
@@ -113,6 +118,7 @@ export const useAuth = () => {
     displayName,
     membershipTier,
     isMember,
+    refreshUserContext,
     signOut,
   };
 };

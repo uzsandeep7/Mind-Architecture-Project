@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
@@ -8,6 +8,8 @@ import { Calendar, MapPin, Clock, Users, ArrowLeft, Share2, Check } from "lucide
 import { EventCheckoutModal } from "@/components/checkout/EventCheckoutModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
+import { PaymentSuccessDialog } from "@/components/checkout/PaymentSuccessDialog";
 
 type EventDetails = {
   id: string;
@@ -37,9 +39,12 @@ const calculateTimeLeft = (eventDate: Date) => {
 const EventDetailPage = () => {
   const { isMember } = useAuth();
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [event, setEvent] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [bookingTotal, setBookingTotal] = useState<number | undefined>(undefined);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   useEffect(() => {
@@ -70,6 +75,49 @@ const EventDetailPage = () => {
     const timer = setInterval(() => setTimeLeft(calculateTimeLeft(eventDate)), 1000);
     return () => clearInterval(timer);
   }, [event]);
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+    const bookingId = searchParams.get("booking_id");
+
+    if (canceled === "1") {
+      toast.error("Stripe checkout was canceled.");
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    if (!success || success !== "1" || !sessionId || !bookingId || !event) return;
+
+    const verifyEventCheckout = async () => {
+      const { data, error } = await supabase.functions.invoke("verify-event-checkout", {
+        body: { sessionId, bookingId },
+      });
+
+      if (error || !data?.bookingId) {
+        toast.error("We could not verify your Stripe event payment yet.");
+        return;
+      }
+
+      setEvent((prev) =>
+        prev
+          ? {
+              ...prev,
+              available_seats: Math.max(0, prev.available_seats - Number(data.seats ?? 0)),
+            }
+          : prev,
+      );
+      const unitPrice = isMember && event.member_price !== null ? Number(event.member_price) : Number(event.price);
+      setBookingTotal(unitPrice * Number(data.seats ?? 0) * 1.1);
+      setShowCheckout(false);
+      setShowSuccess(true);
+      setSearchParams({}, { replace: true });
+      toast.success("Event booking confirmed successfully!");
+    };
+
+    void verifyEventCheckout();
+  }, [event, isMember, searchParams, setSearchParams]);
 
   if (loading) {
     return (
@@ -227,6 +275,7 @@ const EventDetailPage = () => {
                     open={showCheckout}
                     onOpenChange={setShowCheckout}
                     event={{
+                      id: event.id,
                       title: event.title,
                       date: eventDate,
                       venue: event.venue,
@@ -235,6 +284,13 @@ const EventDetailPage = () => {
                       availableSeats: event.available_seats,
                     }}
                     isMember={isMember}
+                  />
+                  <PaymentSuccessDialog
+                    open={showSuccess}
+                    onOpenChange={setShowSuccess}
+                    type="event"
+                    eventTitle={event.title}
+                    orderTotal={bookingTotal}
                   />
                 </div>
 

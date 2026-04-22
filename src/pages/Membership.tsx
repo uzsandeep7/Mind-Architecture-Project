@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,11 @@ import {
   Video,
 } from "lucide-react";
 import { SubscriptionCheckoutModal } from "@/components/checkout/SubscriptionCheckoutModal";
+import { useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { PaymentSuccessDialog } from "@/components/checkout/PaymentSuccessDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 const freeFeatures = [
   { text: "User registration & login", included: true },
@@ -114,6 +119,42 @@ const premiumPlan = {
 
 const MembershipPage = () => {
   const [showCheckout, setShowCheckout] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { user, refreshUserContext, membershipTier } = useAuth();
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+
+    if (canceled === "1") {
+      toast.error("Stripe checkout was canceled.");
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    if (!user || success !== "1" || !sessionId) return;
+
+    const verifyMembershipCheckout = async () => {
+      const { data, error } = await supabase.functions.invoke("verify-membership-checkout", {
+        body: { sessionId },
+      });
+
+      if (error || data?.membershipTier !== "premium") {
+        toast.error("We could not verify your Stripe membership payment yet.");
+        return;
+      }
+
+      await refreshUserContext();
+      setShowCheckout(false);
+      setShowSuccess(true);
+      setSearchParams({}, { replace: true });
+      toast.success("Premium membership activated successfully!");
+    };
+
+    void verifyMembershipCheckout();
+  }, [refreshUserContext, searchParams, setSearchParams, user]);
 
   return (
     <Layout>
@@ -231,9 +272,10 @@ const MembershipPage = () => {
                 size="lg"
                 className="w-full"
                 onClick={() => setShowCheckout(true)}
+                disabled={membershipTier === "premium"}
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                Upgrade to Premium
+                {membershipTier === "premium" ? "Premium Active" : "Upgrade to Premium"}
               </Button>
             </motion.div>
 
@@ -241,6 +283,12 @@ const MembershipPage = () => {
               open={showCheckout}
               onOpenChange={setShowCheckout}
               plan={premiumPlan}
+            />
+            <PaymentSuccessDialog
+              open={showSuccess}
+              onOpenChange={setShowSuccess}
+              type="subscription"
+              planName={premiumPlan.name}
             />
           </div>
         </div>
@@ -398,9 +446,14 @@ const MembershipPage = () => {
             <p className="text-cream/70 mb-8">
               Join thousands of members who are transforming their mindset and achieving extraordinary results.
             </p>
-            <Button variant="gold" size="lg" onClick={() => setShowCheckout(true)}>
+            <Button
+              variant="gold"
+              size="lg"
+              onClick={() => setShowCheckout(true)}
+              disabled={membershipTier === "premium"}
+            >
               <Crown className="w-5 h-5 mr-2" />
-              Get Premium Access
+              {membershipTier === "premium" ? "Premium Already Active" : "Get Premium Access"}
             </Button>
           </motion.div>
         </div>

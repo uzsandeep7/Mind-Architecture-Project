@@ -33,6 +33,7 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Loader2,
+  Save,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -205,6 +206,9 @@ const getErrorMessage = (error: unknown) => {
   return "";
 };
 
+const buildAustraliaPostTrackingUrl = (trackingNumber: string) =>
+  `https://auspost.com.au/mypost/track/search?trackingNumber=${encodeURIComponent(trackingNumber)}`;
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading, isAdmin, role, signOut } = useAuth();
@@ -212,9 +216,10 @@ const AdminDashboard = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
+  const [trackingDrafts, setTrackingDrafts] = useState<Record<string, { trackingNumber: string; carrier: string }>>({});
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
@@ -375,7 +380,19 @@ const AdminDashboard = () => {
           comments: 0,
         })),
       );
-      setOrders(ordersResult.data ?? []);
+      const loadedOrders = ordersResult.data ?? [];
+      setOrders(loadedOrders);
+      setTrackingDrafts(
+        Object.fromEntries(
+          loadedOrders.map((order) => [
+            order.id,
+            {
+              trackingNumber: order.tracking_number ?? "",
+              carrier: order.carrier ?? "Australia Post",
+            },
+          ]),
+        ),
+      );
       setMessages(
         (messagesResult.data ?? []).map((message) => ({
           ...message,
@@ -747,6 +764,43 @@ const AdminDashboard = () => {
       toast.error("Failed to update membership");
     } finally {
       setMembershipUpdatingId(null);
+    }
+  };
+
+  const saveOrderTracking = async (orderId: string) => {
+    const draft = trackingDrafts[orderId];
+    if (!draft) return;
+
+    const trackingNumber = draft.trackingNumber.trim();
+    const carrier = (draft.carrier || "Australia Post").trim() || "Australia Post";
+    const trackingUrl = trackingNumber ? buildAustraliaPostTrackingUrl(trackingNumber) : null;
+
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .update({
+          tracking_number: trackingNumber || null,
+          carrier: trackingNumber ? carrier : null,
+          tracking_url: trackingUrl,
+        })
+        .eq("id", orderId)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      setOrders((prev) => prev.map((order) => (order.id === orderId ? data : order)));
+      setTrackingDrafts((prev) => ({
+        ...prev,
+        [orderId]: {
+          trackingNumber: data.tracking_number ?? "",
+          carrier: data.carrier ?? "Australia Post",
+        },
+      }));
+      toast.success("Tracking details updated");
+    } catch (error) {
+      console.error("Failed to save tracking details:", error);
+      toast.error(getErrorMessage(error) || "Failed to save tracking details");
     }
   };
 
@@ -1330,7 +1384,7 @@ const AdminDashboard = () => {
                         key={event.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
+                        className="space-y-4 p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -1632,7 +1686,7 @@ const AdminDashboard = () => {
                         key={book.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
+                        className="space-y-4 p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
@@ -1721,16 +1775,16 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {mockOrders.map((order) => (
+                    {orders.map((order) => (
                       <motion.div
                         key={order.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
+                        className="space-y-4 p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{order.id}</h4>
+                            <h4 className="font-medium">Order #{order.id.slice(0, 8).toUpperCase()}</h4>
                             <Badge
                               variant={
                                 order.status === "paid"
@@ -1749,15 +1803,77 @@ const AdminDashboard = () => {
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {order.customer} • {order.items} item(s)
+                            {order.payment_method || "Payment method pending"}
                           </p>
-                          <p className="text-xs text-muted-foreground">{order.date}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-primary">${order.total}</p>
+                          <p className="font-bold text-primary">${order.total_amount}</p>
                         </div>
+                        <div className="grid gap-3 md:grid-cols-[1.2fr,1fr,auto] md:items-end">
+                          <div>
+                            <Label htmlFor={`tracking-number-${order.id}`}>Tracking Number</Label>
+                            <Input
+                              id={`tracking-number-${order.id}`}
+                              value={trackingDrafts[order.id]?.trackingNumber ?? ""}
+                              onChange={(e) =>
+                                setTrackingDrafts((prev) => ({
+                                  ...prev,
+                                  [order.id]: {
+                                    trackingNumber: e.target.value,
+                                    carrier: prev[order.id]?.carrier ?? order.carrier ?? "Australia Post",
+                                  },
+                                }))
+                              }
+                              placeholder="Enter AusPost tracking number"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`carrier-${order.id}`}>Carrier</Label>
+                            <Input
+                              id={`carrier-${order.id}`}
+                              value={trackingDrafts[order.id]?.carrier ?? "Australia Post"}
+                              onChange={(e) =>
+                                setTrackingDrafts((prev) => ({
+                                  ...prev,
+                                  [order.id]: {
+                                    trackingNumber: prev[order.id]?.trackingNumber ?? order.tracking_number ?? "",
+                                    carrier: e.target.value,
+                                  },
+                                }))
+                              }
+                            />
+                          </div>
+                          <Button
+                            variant="gold"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => void saveOrderTracking(order.id)}
+                          >
+                            <Save size={15} />
+                            Save Tracking
+                          </Button>
+                        </div>
+                        {trackingDrafts[order.id]?.trackingNumber ? (
+                          <p className="text-sm text-muted-foreground">
+                            Customer link:{" "}
+                            <a
+                              className="text-primary underline-offset-4 hover:underline"
+                              href={buildAustraliaPostTrackingUrl(trackingDrafts[order.id].trackingNumber)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Track with Australia Post
+                            </a>
+                          </p>
+                        ) : null}
                       </motion.div>
                     ))}
+                    {orders.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                        No orders yet. When a user buys a book, you can add their Australia Post tracking details here.
+                      </div>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -1962,7 +2078,7 @@ const AdminDashboard = () => {
                         key={managedUser.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
+                        className="space-y-4 p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
@@ -2062,3 +2178,4 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+

@@ -3,19 +3,22 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { CreditCard, CheckCircle, Lock, ShoppingBag } from "lucide-react";
+import { CheckCircle, CreditCard, ExternalLink, Lock, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { FunctionsHttpError } from "@supabase/supabase-js";
+
+const PENDING_ORDER_EXPIRY_MS = 60 * 60 * 1000;
 
 const CheckoutPage = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user, isMember } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [orderId, setOrderId] = useState("");
@@ -27,11 +30,67 @@ const CheckoutPage = () => {
     city: "",
     postalCode: "",
     country: "Australia",
-    paymentMethod: "card",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCvc: "",
   });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const expirePendingOrders = async () => {
+      const expiryCutoff = new Date(Date.now() - PENDING_ORDER_EXPIRY_MS).toISOString();
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "cancelled" })
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .lt("created_at", expiryCutoff);
+
+      if (error) {
+        console.error("Error expiring pending orders:", error);
+      }
+    };
+
+    void expirePendingOrders();
+  }, [user]);
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+    const success = searchParams.get("success");
+    const orderIdParam = searchParams.get("order_id");
+    const canceled = searchParams.get("canceled");
+
+    if (canceled === "1") {
+      toast.error("Stripe checkout was canceled. Your order is still pending.");
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    if (!user || success !== "1" || !sessionId || !orderIdParam) return;
+
+    const verifyCheckout = async () => {
+      setIsProcessing(true);
+      const { data, error } = await supabase.functions.invoke("verify-book-checkout", {
+        body: {
+          sessionId,
+          orderId: orderIdParam,
+        },
+      });
+
+      if (error || !data?.orderId) {
+        toast.error("We could not verify your Stripe payment yet.");
+        setIsProcessing(false);
+        return;
+      }
+
+      await clearCart();
+      setOrderId(data.orderId);
+      setIsComplete(true);
+      setSearchParams({}, { replace: true });
+      toast.success("Payment confirmed successfully!");
+      setIsProcessing(false);
+    };
+
+    void verifyCheckout();
+  }, [clearCart, searchParams, setSearchParams, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -59,11 +118,10 @@ const CheckoutPage = () => {
         .from("orders")
         .insert({
           user_id: user.id,
-          status: "paid",
+          status: "pending",
           total_amount: totalPrice,
           shipping_address: `${formData.address}, ${formData.city}, ${formData.postalCode}, ${formData.country}`,
-          payment_method: formData.paymentMethod,
-          payment_id: `mock_${Date.now()}`,
+          payment_method: "stripe_test_card",
         })
         .select()
         .single();
@@ -84,15 +142,52 @@ const CheckoutPage = () => {
 
       if (itemsError) throw itemsError;
 
-      // Clear cart
-      await clearCart();
+      const successUrl = `${window.location.origin}/checkout?success=1&session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`;
+      const cancelUrl = `${window.location.origin}/checkout?canceled=1&order_id=${order.id}`;
+      const checkoutItems = items.map((item) => ({
+        title: item.book?.title ?? "Book Purchase",
+        quantity: item.quantity,
+        price: (isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0,
+      }));
 
-      setOrderId(order.id);
-      setIsComplete(true);
-      toast.success("Order placed successfully!");
+      const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
+        "create-book-checkout",
+        {
+          body: {
+            orderId: order.id,
+            successUrl,
+            cancelUrl,
+            items: checkoutItems,
+          },
+        },
+      );
+
+      if (checkoutError || !checkoutData?.url) {
+        throw checkoutError ?? new Error("Failed to create Stripe checkout session");
+      }
+
+      window.location.href = checkoutData.url;
     } catch (error) {
       console.error("Error processing order:", error);
-      toast.error("Failed to process order. Please try again.");
+      let message = "Failed to process order. Please try again.";
+
+      if (error instanceof FunctionsHttpError) {
+        try {
+          const errorBody = await error.context.json();
+          message =
+            typeof errorBody?.error === "string"
+              ? errorBody.error
+              : JSON.stringify(errorBody);
+        } catch {
+          message = error.message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      } else if (typeof error === "object" && error && "message" in error) {
+        message = String(error.message);
+      }
+
+      toast.error(message);
     } finally {
       setIsProcessing(false);
     }
@@ -282,59 +377,23 @@ const CheckoutPage = () => {
                   <h2 className="text-xl font-heading font-bold mb-6">
                     Payment Method
                   </h2>
-                  <RadioGroup
-                    value={formData.paymentMethod}
-                    onValueChange={(value) => setFormData((prev) => ({ ...prev, paymentMethod: value }))}
-                    className="mb-6"
-                  >
-                    <div className="flex items-center space-x-2 p-4 border border-border rounded-lg">
-                      <RadioGroupItem value="card" id="card" />
-                      <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer">
+                  <div className="rounded-xl border border-border bg-secondary/20 p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-full bg-primary/10 p-2 text-primary">
                         <CreditCard size={18} />
-                        Credit / Debit Card
-                      </Label>
-                    </div>
-                  </RadioGroup>
-
-                  {formData.paymentMethod === "card" && (
-                    <div className="space-y-4">
+                      </div>
                       <div>
-                        <Label htmlFor="cardNumber">Card Number</Label>
-                        <Input
-                          id="cardNumber"
-                          name="cardNumber"
-                          placeholder="1234 5678 9012 3456"
-                          value={formData.cardNumber}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="cardExpiry">Expiry Date</Label>
-                          <Input
-                            id="cardExpiry"
-                            name="cardExpiry"
-                            placeholder="MM/YY"
-                            value={formData.cardExpiry}
-                            onChange={handleChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="cardCvc">CVC</Label>
-                          <Input
-                            id="cardCvc"
-                            name="cardCvc"
-                            placeholder="123"
-                            value={formData.cardCvc}
-                            onChange={handleChange}
-                            required
-                          />
-                        </div>
+                        <p className="font-medium">Stripe Hosted Checkout</p>
+                        <p className="text-sm text-muted-foreground">
+                          You will be redirected to Stripe&apos;s secure test checkout page to enter card details.
+                        </p>
                       </div>
                     </div>
-                  )}
+                    <div className="mt-4 rounded-lg border border-dashed border-primary/30 bg-background/40 p-4 text-sm text-muted-foreground">
+                      Use the Stripe test card <span className="font-medium text-foreground">4242 4242 4242 4242</span>,
+                      any future expiry date, and any 3-digit CVC.
+                    </div>
+                  </div>
                 </motion.div>
               </div>
 
@@ -385,8 +444,8 @@ const CheckoutPage = () => {
                       "Processing..."
                     ) : (
                       <>
-                        <Lock size={16} />
-                        Pay ${totalPrice.toFixed(2)}
+                        <ExternalLink size={16} />
+                        Pay with Stripe Test Checkout
                       </>
                     )}
                   </Button>

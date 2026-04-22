@@ -1,1 +1,19 @@
-project_id = "aujzyiubplflmdetjlni"
+project_id = "qdzpdoegmklpwjlyoodo"
+
+[functions.create-book-checkout]
+verify_jwt = false
+
+[functions.verify-book-checkout]
+verify_jwt = false
+
+[functions.create-membership-checkout]
+verify_jwt = false
+
+[functions.verify-membership-checkout]
+verify_jwt = false
+
+[functions.create-event-checkout]
+verify_jwt = false
+
+[functions.verify-event-checkout]
+verify_jwt = false
