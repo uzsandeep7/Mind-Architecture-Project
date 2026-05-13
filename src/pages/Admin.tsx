@@ -25,17 +25,16 @@ import {
   Eye,
   EyeOff,
   Mail,
+  MessageSquare,
   Crown,
   DollarSign,
   BarChart3,
   PieChart,
   Activity,
-  ArrowUpRight,
-  ArrowDownRight,
   Loader2,
   Save,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -57,80 +56,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
-// Mock data for charts
-const salesData = [
-  { month: "Jan", bookings: 65, sales: 4500 },
-  { month: "Feb", bookings: 78, sales: 5200 },
-  { month: "Mar", bookings: 92, sales: 6100 },
-  { month: "Apr", bookings: 84, sales: 5800 },
-  { month: "May", bookings: 110, sales: 7200 },
-  { month: "Jun", bookings: 125, sales: 8500 },
-];
-
-const bookSalesData = [
-  { name: "The Power of Mind", sales: 234, revenue: 4446 },
-  { name: "Lead with Heart", sales: 189, revenue: 4536 },
-  { name: "Mindset Mastery", sales: 156, revenue: 3432 },
-  { name: "Success Blueprint", sales: 98, revenue: 1764 },
-];
-
-const membershipData = [
-  { name: "Free", value: 2847, color: "#6B7280" },
-  { name: "Premium", value: 423, color: "#EAB308" },
-];
-
-const eventBookingsData = [
-  { event: "Masterclass", booked: 373, capacity: 500 },
-  { event: "Weekend Intensive", booked: 211, capacity: 300 },
-  { event: "Leadership Summit", booked: 44, capacity: 200 },
-  { event: "Online Workshop", booked: 892, capacity: 1000 },
-];
-
-// Mock users with premium status
-const mockUsers = [
-  { id: 1, name: "Sarah Johnson", email: "sarah@email.com", isPremium: true, joinedAt: "2025-12-01" },
-  { id: 2, name: "Michael Chen", email: "michael@email.com", isPremium: false, joinedAt: "2025-11-15" },
-  { id: 3, name: "Emma Williams", email: "emma@email.com", isPremium: true, joinedAt: "2025-10-22" },
-  { id: 4, name: "James Brown", email: "james@email.com", isPremium: false, joinedAt: "2026-01-02" },
-  { id: 5, name: "Olivia Davis", email: "olivia@email.com", isPremium: true, joinedAt: "2025-09-18" },
-  { id: 6, name: "William Taylor", email: "william@email.com", isPremium: false, joinedAt: "2025-08-30" },
-];
-
-// Mock events
-const mockEvents = [
-  { id: 1, title: "Mind Architecture Masterclass", date: "2026-02-15", venue: "Melbourne", price: 299, totalSeats: 500, bookedSeats: 373, isPublished: true },
-  { id: 2, title: "Breakthrough Weekend Intensive", date: "2026-03-22", venue: "Sydney", price: 599, totalSeats: 300, bookedSeats: 211, isPublished: true },
-  { id: 3, title: "Corporate Leadership Summit", date: "2026-04-10", venue: "Brisbane", price: 449, totalSeats: 200, bookedSeats: 44, isPublished: false },
-];
-
-// Mock books
-const mockBooks = [
-  { id: 1, title: "The Power of Mind", author: "Dr. Sarah Mitchell", price: 19, stock: 234, sold: 234, isPublished: true },
-  { id: 2, title: "Lead with Heart", author: "Dr. Sarah Mitchell", price: 24, stock: 156, sold: 189, isPublished: true },
-  { id: 3, title: "Mindset Mastery", author: "Dr. Sarah Mitchell", price: 22, stock: 89, sold: 156, isPublished: true },
-];
-
-// Mock orders
-const mockOrders = [
-  { id: "ORD-001", customer: "Sarah Johnson", items: 2, total: 43, status: "completed", date: "2026-01-07" },
-  { id: "ORD-002", customer: "Michael Chen", items: 1, total: 19, status: "processing", date: "2026-01-06" },
-  { id: "ORD-003", customer: "Emma Williams", items: 3, total: 65, status: "completed", date: "2026-01-05" },
-  { id: "ORD-004", customer: "James Brown", items: 1, total: 24, status: "shipped", date: "2026-01-04" },
-];
-
-// Mock blog posts
-const mockBlogPosts = [
-  { id: 1, title: "5 Morning Rituals for Peak Performance", views: 12450, likes: 892, comments: 156, isPublished: true },
-  { id: 2, title: "The Science of Positive Thinking", views: 8920, likes: 654, comments: 98, isPublished: true },
-  { id: 3, title: "Building Resilience in Challenging Times", views: 6780, likes: 423, comments: 67, isPublished: false },
-];
-
-// Mock messages
-const mockMessages = [
-  { id: 1, name: "Jennifer Smith", email: "jen@email.com", message: "I would like to know more about corporate workshops...", isRead: false, date: "2026-01-07" },
-  { id: 2, name: "Robert Johnson", email: "rob@email.com", message: "Amazing event last week! Thank you for the inspiration.", isRead: true, date: "2026-01-05" },
-];
-
 type AppRole = Database["public"]["Enums"]["app_role"];
 type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type BookRow = Database["public"]["Tables"]["books"]["Row"];
@@ -138,6 +63,14 @@ type BlogPostRow = Database["public"]["Tables"]["blog_posts"]["Row"];
 type ContactMessageRow = Database["public"]["Tables"]["contact_messages"]["Row"];
 type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type EventBookingRow = Database["public"]["Tables"]["event_bookings"]["Row"];
+type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
+
+type OrderItemWithBook = {
+  quantity: number;
+  price: number;
+  book: { title: string } | null;
+};
 
 type ManagedUser = {
   id: string;
@@ -209,6 +142,22 @@ const getErrorMessage = (error: unknown) => {
 const buildAustraliaPostTrackingUrl = (trackingNumber: string) =>
   `https://auspost.com.au/mypost/track/search?trackingNumber=${encodeURIComponent(trackingNumber)}`;
 
+const PENDING_ORDER_EXPIRY_MS = 60 * 60 * 1000;
+
+const isExpiredPendingOrder = (order: { status: string; created_at: string }) =>
+  order.status === "pending" &&
+  new Date(order.created_at).getTime() < Date.now() - PENDING_ORDER_EXPIRY_MS;
+
+const getPendingOrderExpiry = (createdAt: string) =>
+  new Date(new Date(createdAt).getTime() + PENDING_ORDER_EXPIRY_MS);
+
+const getAdminOrderGroup = (status: string) => {
+  if (status === "pending") return "Pending Payment";
+  if (status === "cancelled") return "Cancelled";
+  if (status === "delivered" || status === "completed") return "Delivered / Completed";
+  return "In Progress";
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading, isAdmin, role, signOut } = useAuth();
@@ -217,8 +166,13 @@ const AdminDashboard = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [eventBookings, setEventBookings] = useState<EventBookingRow[]>([]);
+  const [orderItems, setOrderItems] = useState<OrderItemWithBook[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [messageFilter, setMessageFilter] = useState<"unread" | "all">("unread");
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
+  const [consultations, setConsultations] = useState<ConsultationRow[]>([]);
+  const [consultationDrafts, setConsultationDrafts] = useState<Record<string, { date: string; status: string }>>({});
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, { trackingNumber: string; carrier: string }>>({});
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
@@ -232,6 +186,7 @@ const AdminDashboard = () => {
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
   const [membershipUpdatingId, setMembershipUpdatingId] = useState<string | null>(null);
+  const [selectedOrderGroup, setSelectedOrderGroup] = useState("Pending Payment");
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -270,53 +225,6 @@ const AdminDashboard = () => {
     is_published: false,
   });
 
-  // Stats
-  const stats = [
-    {
-      label: "Total Users",
-      value: "3,270",
-      icon: Users,
-      change: "+12.5%",
-      isPositive: true,
-    },
-    {
-      label: "Premium Members",
-      value: "423",
-      icon: Crown,
-      change: "+8.2%",
-      isPositive: true,
-      highlight: true,
-    },
-    {
-      label: "Total Events",
-      value: "12",
-      icon: Calendar,
-      change: "+2",
-      isPositive: true,
-    },
-    {
-      label: "Books Sold",
-      value: "579",
-      icon: BookOpen,
-      change: "+18.3%",
-      isPositive: true,
-    },
-    {
-      label: "Revenue",
-      value: "$45,280",
-      icon: DollarSign,
-      change: "+23.1%",
-      isPositive: true,
-    },
-    {
-      label: "Unread Messages",
-      value: "8",
-      icon: Mail,
-      change: "-3",
-      isPositive: false,
-    },
-  ];
-
   useEffect(() => {
     if (!isLoading && user && isAdmin) {
       void loadAdminData();
@@ -326,20 +234,41 @@ const AdminDashboard = () => {
   const loadAdminData = async () => {
     setIsRefreshing(true);
     try {
+      const expiryCutoff = new Date(Date.now() - PENDING_ORDER_EXPIRY_MS).toISOString();
+      const { error: expireOrdersError } = await supabase
+        .from("orders")
+        .update({ status: "cancelled" })
+        .eq("status", "pending")
+        .lt("created_at", expiryCutoff);
+
+      if (expireOrdersError) {
+        console.error("Failed to expire pending admin orders:", expireOrdersError);
+      }
+
       const [
         eventsResult,
         booksResult,
         blogPostsResult,
+        blogLikesResult,
+        blogCommentsResult,
         ordersResult,
+        eventBookingsResult,
+        orderItemsResult,
         messagesResult,
+        consultationsResult,
         profilesResult,
         rolesResult,
       ] = await Promise.all([
         supabase.from("events").select("*").order("date", { ascending: false }),
         supabase.from("books").select("*").order("created_at", { ascending: false }),
         supabase.from("blog_posts").select("*").order("updated_at", { ascending: false }),
+        supabase.from("blog_likes").select("post_id"),
+        supabase.from("blog_comments").select("post_id"),
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
+        supabase.from("event_bookings").select("*").order("created_at", { ascending: false }),
+        supabase.from("order_items").select("quantity, price, book:books(title)"),
         supabase.from("contact_messages").select("*").order("created_at", { ascending: false }),
+        supabase.from("consultations").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*"),
       ]);
@@ -350,10 +279,27 @@ const AdminDashboard = () => {
         blogPostsResult,
         ordersResult,
         messagesResult,
+        consultationsResult,
         profilesResult,
         rolesResult,
       ]) {
         if (result.error) throw result.error;
+      }
+
+      if (blogLikesResult.error) {
+        console.warn("Failed to load blog likes for admin analytics:", blogLikesResult.error);
+      }
+
+      if (blogCommentsResult.error) {
+        console.warn("Failed to load blog comments for admin analytics:", blogCommentsResult.error);
+      }
+
+      if (eventBookingsResult.error) {
+        console.warn("Failed to load event bookings for admin analytics:", eventBookingsResult.error);
+      }
+
+      if (orderItemsResult.error) {
+        console.warn("Failed to load order items for admin analytics:", orderItemsResult.error);
       }
 
       setEvents(
@@ -371,17 +317,30 @@ const AdminDashboard = () => {
           sold: 0,
         })),
       );
+      const likesByPost = new Map<string, number>();
+      for (const like of blogLikesResult.data ?? []) {
+        likesByPost.set(like.post_id, (likesByPost.get(like.post_id) ?? 0) + 1);
+      }
+      const commentsByPost = new Map<string, number>();
+      for (const comment of blogCommentsResult.data ?? []) {
+        commentsByPost.set(comment.post_id, (commentsByPost.get(comment.post_id) ?? 0) + 1);
+      }
       setBlogPosts(
         (blogPostsResult.data ?? []).map((post) => ({
           ...post,
           isPublished: post.is_published,
-          views: 0,
-          likes: 0,
-          comments: 0,
+          likes: likesByPost.get(post.id) ?? 0,
+          comments: commentsByPost.get(post.id) ?? 0,
         })),
       );
       const loadedOrders = ordersResult.data ?? [];
-      setOrders(loadedOrders);
+      setOrders(
+        loadedOrders.map((order) =>
+          isExpiredPendingOrder(order) ? { ...order, status: "cancelled" } : order,
+        ),
+      );
+      setEventBookings(eventBookingsResult.data ?? []);
+      setOrderItems((orderItemsResult.data ?? []) as unknown as OrderItemWithBook[]);
       setTrackingDrafts(
         Object.fromEntries(
           loadedOrders.map((order) => [
@@ -399,6 +358,18 @@ const AdminDashboard = () => {
           isRead: message.is_read,
           date: new Date(message.created_at).toLocaleDateString(),
         })),
+      );
+      setConsultations(consultationsResult.data ?? []);
+      setConsultationDrafts(
+        Object.fromEntries(
+          (consultationsResult.data ?? []).map((consultation) => [
+            consultation.id,
+            {
+              date: consultation.date ? new Date(consultation.date).toISOString().slice(0, 16) : "",
+              status: consultation.status,
+            },
+          ]),
+        ),
       );
 
       const profiles = profilesResult.data ?? [];
@@ -438,6 +409,143 @@ const AdminDashboard = () => {
       setIsRefreshing(false);
     }
   };
+
+  const salesData = useMemo(() => {
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setMonth(date.getMonth() - (5 - index), 1);
+      date.setHours(0, 0, 0, 0);
+      return {
+        key: `${date.getFullYear()}-${date.getMonth()}`,
+        month: date.toLocaleDateString(undefined, { month: "short" }),
+        bookings: 0,
+        sales: 0,
+      };
+    });
+
+    const monthMap = new Map(months.map((entry) => [entry.key, entry]));
+
+    for (const order of orders) {
+      const date = new Date(order.created_at);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const month = monthMap.get(key);
+      if (!month) continue;
+      month.sales += Number(order.total_amount) || 0;
+    }
+
+    for (const booking of eventBookings) {
+      const date = new Date(booking.created_at);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      const month = monthMap.get(key);
+      if (!month) continue;
+      month.bookings += 1;
+    }
+
+    return months;
+  }, [eventBookings, orders]);
+
+  const membershipData = useMemo(
+    () => [
+      {
+        name: "Free",
+        value: managedUsers.filter((managedUser) => managedUser.membership_tier !== "premium").length,
+        color: "#6B7280",
+      },
+      {
+        name: "Premium",
+        value: managedUsers.filter((managedUser) => managedUser.membership_tier === "premium").length,
+        color: "#EAB308",
+      },
+    ].filter((entry) => entry.value > 0),
+    [managedUsers],
+  );
+
+  const eventBookingsData = useMemo(
+    () =>
+      events
+        .map((event) => ({
+          event: event.title,
+          booked: Number(event.bookedSeats) || 0,
+          capacity: Number(event.totalSeats) || 0,
+        }))
+        .sort((a, b) => b.booked - a.booked)
+        .slice(0, 5),
+    [events],
+  );
+
+  const bookSalesData = useMemo(() => {
+    const salesMap = new Map<string, { name: string; sales: number; revenue: number }>();
+
+    for (const item of orderItems) {
+      const name = item.book?.title ?? "Untitled Book";
+      const existing = salesMap.get(name) ?? { name, sales: 0, revenue: 0 };
+      existing.sales += Number(item.quantity) || 0;
+      existing.revenue += (Number(item.quantity) || 0) * (Number(item.price) || 0);
+      salesMap.set(name, existing);
+    }
+
+    return Array.from(salesMap.values())
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, 5);
+  }, [orderItems]);
+
+  const stats = useMemo(
+    () => [
+      {
+        label: "Total Users",
+        value: managedUsers.length.toLocaleString(),
+        icon: Users,
+        detail: `${managedUsers.filter((managedUser) => managedUser.role === "admin" || managedUser.role === "owner").length} admin accounts`,
+      },
+      {
+        label: "Premium Members",
+        value: managedUsers
+          .filter((managedUser) => managedUser.membership_tier === "premium")
+          .length
+          .toLocaleString(),
+        icon: Crown,
+        detail: `${managedUsers.filter((managedUser) => managedUser.membership_tier !== "premium").length} free members`,
+        highlight: true,
+      },
+      {
+        label: "Total Events",
+        value: events.length.toLocaleString(),
+        icon: Calendar,
+        detail: `${events.filter((event) => event.is_published).length} published`,
+      },
+      {
+        label: "Books Sold",
+        value: orderItems
+          .reduce((total, item) => total + (Number(item.quantity) || 0), 0)
+          .toLocaleString(),
+        icon: BookOpen,
+        detail: `${books.length} books listed`,
+      },
+      {
+        label: "Revenue",
+        value: `$${orders.reduce((total, order) => total + (Number(order.total_amount) || 0), 0).toLocaleString()}`,
+        icon: DollarSign,
+        detail: `${orders.length} total orders`,
+      },
+      {
+        label: "Unread Messages",
+        value: messages.filter((message) => !message.isRead).length.toLocaleString(),
+        icon: Mail,
+        detail: `${messages.length} total messages`,
+      },
+    ],
+    [books.length, managedUsers, messages, orderItems, orders, events],
+  );
+
+  const unreadMessagesCount = messages.filter((message) => !message.isRead).length;
+  const visibleMessages =
+    messageFilter === "unread"
+      ? messages.filter((message) => !message.isRead)
+      : messages;
+  const managedUsersMap = useMemo(
+    () => new Map(managedUsers.map((managedUser) => [managedUser.id, managedUser])),
+    [managedUsers],
+  );
 
   const resetEventForm = () => {
     setEditingEventId(null);
@@ -725,6 +833,47 @@ const AdminDashboard = () => {
     }
   };
 
+  const updateConsultationDraft = (
+    consultationId: string,
+    field: "date" | "status",
+    value: string,
+  ) => {
+    setConsultationDrafts((prev) => ({
+      ...prev,
+      [consultationId]: {
+        date: prev[consultationId]?.date ?? "",
+        status: prev[consultationId]?.status ?? "pending",
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveConsultation = async (consultationId: string) => {
+    const draft = consultationDrafts[consultationId];
+    if (!draft?.date) {
+      toast.error("Please set the consultation date and time first.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("consultations")
+        .update({
+          date: new Date(draft.date).toISOString(),
+          status: draft.status,
+        })
+        .eq("id", consultationId);
+
+      if (error) throw error;
+
+      toast.success("Consultation updated");
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to update consultation:", error);
+      toast.error("Failed to update consultation");
+    }
+  };
+
   const updateUserRole = async (userId: string, nextRole: AppRole) => {
     setRoleUpdatingId(userId);
     try {
@@ -854,6 +1003,23 @@ const AdminDashboard = () => {
         .sort(),
     ),
   );
+  const groupedOrders = [
+    "Pending Payment",
+    "In Progress",
+    "Delivered / Completed",
+    "Cancelled",
+  ]
+    .map((label) => ({
+      label,
+      orders: orders.filter((order) => getAdminOrderGroup(order.status) === label),
+    }))
+    .filter((group) => group.orders.length > 0);
+  const activeOrderGroupLabel =
+    groupedOrders.some((group) => group.label === selectedOrderGroup)
+      ? selectedOrderGroup
+      : groupedOrders[0]?.label ?? "Pending Payment";
+  const visibleOrderGroup =
+    groupedOrders.find((group) => group.label === activeOrderGroupLabel) ?? groupedOrders[0] ?? null;
 
   return (
     <Layout>
@@ -921,22 +1087,13 @@ const AdminDashboard = () => {
                       )}
                     </div>
                     <p className="text-2xl font-bold">{stat.value}</p>
-                    <div className="flex items-center justify-between mt-1">
+                    <div className="mt-1 space-y-1">
                       <p className="text-xs text-muted-foreground">
                         {stat.label}
                       </p>
-                      <span
-                        className={`flex items-center text-xs font-medium ${
-                          stat.isPositive ? "text-green-600" : "text-red-500"
-                        }`}
-                      >
-                        {stat.isPositive ? (
-                          <ArrowUpRight className="w-3 h-3" />
-                        ) : (
-                          <ArrowDownRight className="w-3 h-3" />
-                        )}
-                        {stat.change}
-                      </span>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {stat.detail}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -961,39 +1118,45 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={salesData}>
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis dataKey="month" fontSize={12} />
-                      <YAxis yAxisId="left" fontSize={12} />
-                      <YAxis yAxisId="right" orientation="right" fontSize={12} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="bookings"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
-                        dot={{ fill: "hsl(var(--primary))" }}
-                        name="Bookings"
-                      />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="sales"
-                        stroke="#10B981"
-                        strokeWidth={2}
-                        dot={{ fill: "#10B981" }}
-                        name="Revenue ($)"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  {salesData.some((entry) => entry.bookings > 0 || entry.sales > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={salesData}>
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis dataKey="month" fontSize={12} />
+                        <YAxis yAxisId="left" fontSize={12} />
+                        <YAxis yAxisId="right" orientation="right" fontSize={12} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="bookings"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={2}
+                          dot={{ fill: "hsl(var(--primary))" }}
+                          name="Bookings"
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="sales"
+                          stroke="#10B981"
+                          strokeWidth={2}
+                          dot={{ fill: "#10B981" }}
+                          name="Revenue ($)"
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                      No order or booking data yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1008,34 +1171,40 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPie>
-                      <Pie
-                        data={membershipData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={({ name, percent }) =>
-                          `${name} ${(percent * 100).toFixed(0)}%`
-                        }
-                      >
-                        {membershipData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Legend />
-                    </RechartsPie>
-                  </ResponsiveContainer>
+                  {membershipData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPie>
+                        <Pie
+                          data={membershipData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, percent }) =>
+                            `${name} ${(percent * 100).toFixed(0)}%`
+                          }
+                        >
+                          {membershipData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                        />
+                        <Legend />
+                      </RechartsPie>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                      No membership records yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1052,32 +1221,38 @@ const AdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={eventBookingsData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                      <XAxis type="number" fontSize={12} />
-                      <YAxis dataKey="event" type="category" width={120} fontSize={11} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Bar
-                        dataKey="booked"
-                        fill="hsl(var(--primary))"
-                        name="Booked"
-                        radius={[0, 4, 4, 0]}
-                      />
-                      <Bar
-                        dataKey="capacity"
-                        fill="hsl(var(--muted))"
-                        name="Capacity"
-                        radius={[0, 4, 4, 0]}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {eventBookingsData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={eventBookingsData} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                        <XAxis type="number" fontSize={12} />
+                        <YAxis dataKey="event" type="category" width={120} fontSize={11} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "8px",
+                          }}
+                        />
+                        <Bar
+                          dataKey="booked"
+                          fill="hsl(var(--primary))"
+                          name="Booked"
+                          radius={[0, 4, 4, 0]}
+                        />
+                        <Bar
+                          dataKey="capacity"
+                          fill="hsl(var(--muted))"
+                          name="Capacity"
+                          radius={[0, 4, 4, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                      No events available yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1091,27 +1266,33 @@ const AdminDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {bookSalesData.map((book, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
-                          {i + 1}
-                        </span>
-                        <span className="font-medium text-sm">{book.name}</span>
+                {bookSalesData.length > 0 ? (
+                  <div className="space-y-4">
+                    {bookSalesData.map((book, i) => (
+                      <div
+                        key={book.name}
+                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-bold flex items-center justify-center">
+                            {i + 1}
+                          </span>
+                          <span className="font-medium text-sm">{book.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">{book.sales} sold</p>
+                          <p className="text-xs text-muted-foreground">
+                            ${book.revenue.toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold">{book.sales} sold</p>
-                        <p className="text-xs text-muted-foreground">
-                          ${book.revenue.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex h-[250px] items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                    No book sales recorded yet.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1143,9 +1324,23 @@ const AdminDashboard = () => {
                 <Users className="w-4 h-4 mr-1" />
                 Users
               </TabsTrigger>
+              <TabsTrigger value="consultations">
+                <MessageSquare className="w-4 h-4 mr-1" />
+                Consultations
+                {consultations.length > 0 ? (
+                  <Badge variant="secondary" className="ml-2">
+                    {consultations.length}
+                  </Badge>
+                ) : null}
+              </TabsTrigger>
               <TabsTrigger value="messages">
                 <Mail className="w-4 h-4 mr-1" />
                 Messages
+                {unreadMessagesCount > 0 ? (
+                  <Badge variant="destructive" className="ml-2">
+                    {unreadMessagesCount}
+                  </Badge>
+                ) : null}
               </TabsTrigger>
             </TabsList>
 
@@ -1771,104 +1966,149 @@ const AdminDashboard = () => {
             <TabsContent value="orders">
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent Orders</CardTitle>
+                  <CardTitle>Order Management</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
-                    {orders.map((order) => (
-                      <motion.div
-                        key={order.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="space-y-4 p-4 border border-border rounded-lg hover:bg-secondary/30 transition-colors"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium">Order #{order.id.slice(0, 8).toUpperCase()}</h4>
-                            <Badge
-                              variant={
-                                order.status === "paid"
-                                  ? "default"
-                                  : order.status === "delivered"
-                                  ? "secondary"
-                                  : "outline"
-                              }
-                              className={
-                                order.status === "paid"
-                                  ? "bg-green-100 text-green-600 dark:bg-green-900/30"
-                                  : ""
-                              }
-                            >
-                              {order.status}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {order.payment_method || "Payment method pending"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-primary">${order.total_amount}</p>
-                        </div>
-                        <div className="grid gap-3 md:grid-cols-[1.2fr,1fr,auto] md:items-end">
-                          <div>
-                            <Label htmlFor={`tracking-number-${order.id}`}>Tracking Number</Label>
-                            <Input
-                              id={`tracking-number-${order.id}`}
-                              value={trackingDrafts[order.id]?.trackingNumber ?? ""}
-                              onChange={(e) =>
-                                setTrackingDrafts((prev) => ({
-                                  ...prev,
-                                  [order.id]: {
-                                    trackingNumber: e.target.value,
-                                    carrier: prev[order.id]?.carrier ?? order.carrier ?? "Australia Post",
-                                  },
-                                }))
-                              }
-                              placeholder="Enter AusPost tracking number"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`carrier-${order.id}`}>Carrier</Label>
-                            <Input
-                              id={`carrier-${order.id}`}
-                              value={trackingDrafts[order.id]?.carrier ?? "Australia Post"}
-                              onChange={(e) =>
-                                setTrackingDrafts((prev) => ({
-                                  ...prev,
-                                  [order.id]: {
-                                    trackingNumber: prev[order.id]?.trackingNumber ?? order.tracking_number ?? "",
-                                    carrier: e.target.value,
-                                  },
-                                }))
-                              }
-                            />
-                          </div>
+                  <div className="space-y-4">
+                    {groupedOrders.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {groupedOrders.map((group) => (
                           <Button
-                            variant="gold"
+                            key={group.label}
+                            type="button"
+                            variant={activeOrderGroupLabel === group.label ? "gold" : "outline"}
                             size="sm"
                             className="gap-2"
-                            onClick={() => void saveOrderTracking(order.id)}
+                            onClick={() => setSelectedOrderGroup(group.label)}
                           >
-                            <Save size={15} />
-                            Save Tracking
+                            {group.label}
+                            <Badge variant="secondary">{group.orders.length}</Badge>
                           </Button>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    {visibleOrderGroup ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/20 px-4 py-3">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                            {visibleOrderGroup.label}
+                          </h3>
+                          <Badge variant="outline">{visibleOrderGroup.orders.length}</Badge>
                         </div>
-                        {trackingDrafts[order.id]?.trackingNumber ? (
-                          <p className="text-sm text-muted-foreground">
-                            Customer link:{" "}
-                            <a
-                              className="text-primary underline-offset-4 hover:underline"
-                              href={buildAustraliaPostTrackingUrl(trackingDrafts[order.id].trackingNumber)}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              Track with Australia Post
-                            </a>
-                          </p>
-                        ) : null}
-                      </motion.div>
-                    ))}
+                        {visibleOrderGroup.orders.map((order) => (
+                          <motion.div
+                            key={order.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="space-y-4 rounded-lg border border-border p-4 transition-colors hover:bg-secondary/30"
+                          >
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium">Order #{order.id.slice(0, 8).toUpperCase()}</h4>
+                                  <Badge
+                                    variant={
+                                      order.status === "paid"
+                                        ? "default"
+                                        : order.status === "delivered" || order.status === "completed"
+                                          ? "secondary"
+                                          : "outline"
+                                    }
+                                    className={
+                                      order.status === "paid"
+                                        ? "bg-green-100 text-green-600 dark:bg-green-900/30"
+                                        : ""
+                                    }
+                                  >
+                                    {order.status}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {order.payment_method || "Payment method pending"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(order.created_at).toLocaleDateString()}
+                                </p>
+                                {order.status === "pending" ? (
+                                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                                    Pending until {format(getPendingOrderExpiry(order.created_at), "PPP p")}. If payment is not completed before then, this order is cancelled automatically.
+                                  </p>
+                                ) : null}
+                              </div>
+                              <div className="text-left lg:text-right">
+                                <p className="font-bold text-primary">${order.total_amount}</p>
+                              </div>
+                            </div>
+                            {order.status !== "cancelled" ? (
+                              <>
+                                <div className="grid gap-3 md:grid-cols-[1.2fr,1fr,auto] md:items-end">
+                                  <div>
+                                    <Label htmlFor={`tracking-number-${order.id}`}>Tracking Number</Label>
+                                    <Input
+                                      id={`tracking-number-${order.id}`}
+                                      value={trackingDrafts[order.id]?.trackingNumber ?? ""}
+                                      onChange={(e) =>
+                                        setTrackingDrafts((prev) => ({
+                                          ...prev,
+                                          [order.id]: {
+                                            trackingNumber: e.target.value,
+                                            carrier: prev[order.id]?.carrier ?? order.carrier ?? "Australia Post",
+                                          },
+                                        }))
+                                      }
+                                      placeholder="Enter AusPost tracking number"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`carrier-${order.id}`}>Carrier</Label>
+                                    <Input
+                                      id={`carrier-${order.id}`}
+                                      value={trackingDrafts[order.id]?.carrier ?? "Australia Post"}
+                                      onChange={(e) =>
+                                        setTrackingDrafts((prev) => ({
+                                          ...prev,
+                                          [order.id]: {
+                                            trackingNumber: prev[order.id]?.trackingNumber ?? order.tracking_number ?? "",
+                                            carrier: e.target.value,
+                                          },
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                  <Button
+                                    variant="gold"
+                                    size="sm"
+                                    className="gap-2"
+                                    onClick={() => void saveOrderTracking(order.id)}
+                                  >
+                                    <Save size={15} />
+                                    Save Tracking
+                                  </Button>
+                                </div>
+                                {trackingDrafts[order.id]?.trackingNumber ? (
+                                  <p className="text-sm text-muted-foreground">
+                                    Customer link:{" "}
+                                    <a
+                                      className="text-primary underline-offset-4 hover:underline"
+                                      href={buildAustraliaPostTrackingUrl(trackingDrafts[order.id].trackingNumber)}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                    >
+                                      Track with Australia Post
+                                    </a>
+                                  </p>
+                                ) : null}
+                              </>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                This order was cancelled, so tracking is no longer required.
+                              </p>
+                            )}
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : null}
                     {orders.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                         No orders yet. When a user buys a book, you can add their Australia Post tracking details here.
@@ -2066,6 +2306,105 @@ const AdminDashboard = () => {
             </TabsContent>
 
             {/* Users Tab */}
+            <TabsContent value="consultations">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Consultation Requests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {consultations.length > 0 ? (
+                      consultations.map((consultation) => {
+                        const consultationUser = managedUsersMap.get(consultation.user_id);
+                        const draft = consultationDrafts[consultation.id] ?? {
+                          date: consultation.date ? new Date(consultation.date).toISOString().slice(0, 16) : "",
+                          status: consultation.status,
+                        };
+
+                        return (
+                          <motion.div
+                            key={consultation.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="space-y-4 rounded-lg border border-border p-4 transition-colors hover:bg-secondary/30"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium">
+                                    {consultation.topic || "Consultation Request"}
+                                  </h4>
+                                  <Badge variant="outline">{consultation.status}</Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {consultationUser?.full_name || "Unnamed user"}
+                                </p>
+                                <p className="text-xs text-muted-foreground break-all">
+                                  {consultation.user_id}
+                                </p>
+                                <p className="mt-2 text-sm text-muted-foreground">
+                                  Requested / scheduled: {new Date(consultation.date).toLocaleString()}
+                                </p>
+                                {consultation.message ? (
+                                  <p className="mt-2 text-sm whitespace-pre-wrap">
+                                    {consultation.message}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(consultation.created_at).toLocaleDateString()}
+                              </p>
+                            </div>
+
+                            <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+                              <div>
+                                <Label>Consultation Time</Label>
+                                <Input
+                                  type="datetime-local"
+                                  value={draft.date}
+                                  onChange={(e) =>
+                                    updateConsultationDraft(consultation.id, "date", e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <Label>Status</Label>
+                                <select
+                                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                  value={draft.status}
+                                  onChange={(e) =>
+                                    updateConsultationDraft(consultation.id, "status", e.target.value)
+                                  }
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="confirmed">Confirmed</option>
+                                  <option value="completed">Completed</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
+                              </div>
+                              <div className="flex items-end">
+                                <Button
+                                  variant="gold"
+                                  onClick={() => void saveConsultation(consultation.id)}
+                                >
+                                  Save Consultation
+                                </Button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+                        No consultation requests yet.
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Users Tab */}
             <TabsContent value="users">
               <Card>
                 <CardHeader>
@@ -2128,12 +2467,34 @@ const AdminDashboard = () => {
             {/* Messages Tab */}
             <TabsContent value="messages">
               <Card>
-                <CardHeader>
-                  <CardTitle>Contact Messages</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>Contact Messages</CardTitle>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {unreadMessagesCount} unread of {messages.length} total messages
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant={messageFilter === "unread" ? "gold" : "outline"}
+                      size="sm"
+                      onClick={() => setMessageFilter("unread")}
+                    >
+                      Unread
+                    </Button>
+                    <Button
+                      variant={messageFilter === "all" ? "gold" : "outline"}
+                      size="sm"
+                      onClick={() => setMessageFilter("all")}
+                    >
+                      All
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {messages.map((msg) => (
+                    {visibleMessages.length > 0 ? (
+                      visibleMessages.map((msg) => (
                       <motion.div
                         key={msg.id}
                         initial={{ opacity: 0 }}
@@ -2165,7 +2526,14 @@ const AdminDashboard = () => {
                           Mark as {msg.isRead ? "Unread" : "Read"}
                         </Button>
                       </motion.div>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+                        {messageFilter === "unread"
+                          ? "No unread messages right now."
+                          : "No contact messages yet."}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PaymentSuccessDialog } from "@/components/checkout/PaymentSuccessDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 
 const freeFeatures = [
   { text: "User registration & login", included: true },
@@ -120,6 +121,7 @@ const premiumPlan = {
 const MembershipPage = () => {
   const [showCheckout, setShowCheckout] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, refreshUserContext, membershipTier } = useAuth();
 
@@ -155,6 +157,48 @@ const MembershipPage = () => {
 
     void verifyMembershipCheckout();
   }, [refreshUserContext, searchParams, setSearchParams, user]);
+
+  const handleManageMembership = async () => {
+    if (!user) {
+      toast.error("Please sign in to manage your membership");
+      return;
+    }
+
+    setIsOpeningPortal(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("create-customer-portal-session", {
+        body: {
+          returnUrl: `${window.location.origin}/membership`,
+        },
+      });
+
+      if (error || !data?.url) {
+        throw error ?? new Error("Failed to open membership management");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      let message = "We couldn't open membership management right now.";
+
+      if (error instanceof FunctionsHttpError) {
+        try {
+          const errorBody = await error.context.json();
+          message =
+            typeof errorBody?.error === "string"
+              ? errorBody.error
+              : JSON.stringify(errorBody);
+        } catch {
+          message = error.message;
+        }
+      } else if (error instanceof Error) {
+        message = error.message;
+      }
+
+      toast.error(message);
+      setIsOpeningPortal(false);
+    }
+  };
 
   return (
     <Layout>
@@ -271,12 +315,25 @@ const MembershipPage = () => {
                 variant="gold"
                 size="lg"
                 className="w-full"
-                onClick={() => setShowCheckout(true)}
-                disabled={membershipTier === "premium"}
+                onClick={
+                  membershipTier === "premium"
+                    ? () => void handleManageMembership()
+                    : () => setShowCheckout(true)
+                }
+                disabled={isOpeningPortal}
               >
                 <Sparkles className="w-4 h-4 mr-2" />
-                {membershipTier === "premium" ? "Premium Active" : "Upgrade to Premium"}
+                {membershipTier === "premium"
+                  ? isOpeningPortal
+                    ? "Opening Membership Portal..."
+                    : "Manage Membership"
+                  : "Upgrade to Premium"}
               </Button>
+              {membershipTier === "premium" ? (
+                <p className="mt-3 text-center text-xs text-muted-foreground">
+                  Use Stripe&apos;s secure customer portal to cancel, update payment details, or manage billing.
+                </p>
+              ) : null}
             </motion.div>
 
             <SubscriptionCheckoutModal
@@ -449,11 +506,19 @@ const MembershipPage = () => {
             <Button
               variant="gold"
               size="lg"
-              onClick={() => setShowCheckout(true)}
-              disabled={membershipTier === "premium"}
+              onClick={
+                membershipTier === "premium"
+                  ? () => void handleManageMembership()
+                  : () => setShowCheckout(true)
+              }
+              disabled={isOpeningPortal}
             >
               <Crown className="w-5 h-5 mr-2" />
-              {membershipTier === "premium" ? "Premium Already Active" : "Get Premium Access"}
+              {membershipTier === "premium"
+                ? isOpeningPortal
+                  ? "Opening Membership Portal..."
+                  : "Manage Membership"
+                : "Get Premium Access"}
             </Button>
           </motion.div>
         </div>

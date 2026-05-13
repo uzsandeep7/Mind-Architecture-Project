@@ -7,6 +7,8 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
   apiVersion: "2024-06-20",
 });
 
+const ACTIVE_STATUSES = new Set(["trialing", "active", "past_due", "unpaid"]);
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -39,45 +41,65 @@ serve(async (req) => {
       });
     }
 
-    const { priceId, successUrl, cancelUrl } = await req.json();
-    if (!priceId || !successUrl || !cancelUrl) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400,
+    if (!user.email) {
+      return new Response(JSON.stringify({ membership: null }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const customers = await stripe.customers.list({
-      email: user.email ?? "",
+      email: user.email,
       limit: 10,
     });
 
     const customer =
       customers.data.find((entry) => entry.metadata?.user_id === user.id) ??
-      customers.data[0] ??
-      await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: {
-          user_id: user.id,
-        },
+      customers.data[0];
+
+    if (!customer) {
+      return new Response(JSON.stringify({ membership: null }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
+    const subscriptions = await stripe.subscriptions.list({
       customer: customer.id,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        user_id: user.id,
-      },
+      status: "all",
+      limit: 10,
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const subscription =
+      subscriptions.data.find((entry) => ACTIVE_STATUSES.has(entry.status)) ??
+      subscriptions.data[0];
+
+    if (!subscription) {
+      return new Response(JSON.stringify({ membership: null }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const currentPeriodEnd = subscription.items.data[0]?.current_period_end ?? null;
+    const cancelAt = subscription.cancel_at ?? null;
+
+    return new Response(
+      JSON.stringify({
+        membership: {
+          status: subscription.status,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          currentPeriodEnd: currentPeriodEnd
+            ? new Date(currentPeriodEnd * 1000).toISOString()
+            : null,
+          cancelAt: cancelAt ? new Date(cancelAt * 1000).toISOString() : null,
+        },
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(JSON.stringify({ error: message }), {

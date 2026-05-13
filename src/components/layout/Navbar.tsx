@@ -11,17 +11,12 @@ import {
   LayoutDashboard,
   Settings,
   Crown,
-  Contrast,
-  Volume2,
-  Square,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/contexts/CartContext";
-import { useContrastMode } from "@/contexts/ContrastModeContext";
-import { useReadAloud } from "@/contexts/ReadAloudContext";
 
 import {
   DropdownMenu,
@@ -50,13 +45,6 @@ export const Navbar = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { user, signOut, isAdmin, displayName, membershipTier } = useAuth();
-  const { isHighContrast, toggleContrastMode } = useContrastMode();
-  const {
-    isSupported: isReadAloudSupported,
-    isSpeaking,
-    isHoverReadEnabled,
-    toggleHoverRead,
-  } = useReadAloud();
   const { itemCount } = useCart();
   const location = useLocation();
   const navigate = useNavigate();
@@ -146,27 +134,6 @@ export const Navbar = () => {
                       </>
                     )}
                   </div>
-                ) : null}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleContrastMode}
-                    className={`rounded-full text-white hover:text-primary hover:bg-white/5 ${isHighContrast ? "text-primary" : ""}`}
-                    aria-label={isHighContrast ? "Use standard theme" : "Enable high contrast theme"}
-                  >
-                  <Contrast className="w-5 h-5" />
-                </Button>
-
-                {isReadAloudSupported ? (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleHoverRead}
-                    className={`rounded-full text-white hover:text-primary hover:bg-white/5 ${isHoverReadEnabled ? "text-primary" : ""}`}
-                    aria-label={isHoverReadEnabled ? "Stop hover read" : "Enable hover read"}
-                  >
-                    {isSpeaking ? <Square className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-                  </Button>
                 ) : null}
 
                 <Button
@@ -295,24 +262,6 @@ export const Navbar = () => {
             className="fixed inset-0 z-40 bg-black/95 backdrop-blur-md pt-24 px-6 lg:hidden"
           >
             <div className="flex flex-col gap-6">
-              <Button
-                variant={isHighContrast ? "default" : "outline"}
-                className="w-full justify-center"
-                onClick={toggleContrastMode}
-              >
-                <Contrast className="h-4 w-4" />
-                {isHighContrast ? "Standard Theme" : "High Contrast"}
-              </Button>
-              {isReadAloudSupported ? (
-                <Button
-                  variant={isHoverReadEnabled ? "default" : "outline"}
-                  className="w-full justify-center"
-                  onClick={toggleHoverRead}
-                >
-                  {isSpeaking ? <Square className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                  {isHoverReadEnabled ? "Stop Hover Read" : "Hover Read"}
-                </Button>
-              ) : null}
               {navLinks.map((link) => (
                 <Link
                   key={link.href}

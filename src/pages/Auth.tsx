@@ -11,7 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
 import { z } from "zod";
 
-const emailSchema = z.string().email("Please enter a valid email address");
+const EMAIL_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}(\.[A-Za-z]{2,})*$/;
+
+const emailSchema = z
+  .string()
+  .trim()
+  .min(1, "Please enter your email address")
+  .regex(EMAIL_PATTERN, "Please enter a valid email address");
 const loginPasswordSchema = z.string().min(1, "Please enter your password");
 const passwordSchema = z
   .string()
@@ -21,6 +27,8 @@ const passwordSchema = z
   .regex(/[0-9]/, "Password must contain at least one number");
 
 type AppRole = Database["public"]["Enums"]["app_role"];
+
+const isValidEmailAddress = (value: string) => EMAIL_PATTERN.test(value.trim());
 
 // Correct Google "G" (SVG) — works well on dark themes
 const GoogleIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
@@ -93,7 +101,8 @@ const Auth = () => {
   const validateForm = () => {
     const newErrors: { email?: string; password?: string } = {};
 
-    const emailResult = emailSchema.safeParse(email);
+    const normalizedEmail = email.trim();
+    const emailResult = emailSchema.safeParse(normalizedEmail);
     if (!emailResult.success) {
       newErrors.email = emailResult.error.errors[0].message;
     }
@@ -142,12 +151,22 @@ const Auth = () => {
     e.preventDefault();
     if (!validateForm()) return;
 
+    const normalizedEmail = email.trim();
+
+    if (!isValidEmailAddress(normalizedEmail)) {
+      setErrors((prev) => ({
+        ...prev,
+        email: "Please enter a valid email address",
+      }));
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
+          email: normalizedEmail,
           password,
         });
 
@@ -182,7 +201,7 @@ const Auth = () => {
         const redirectUrl = `${window.location.origin}/`;
 
         const { error } = await supabase.auth.signUp({
-          email,
+          email: normalizedEmail,
           password,
           options: {
             emailRedirectTo: redirectUrl,
@@ -274,6 +293,9 @@ const Auth = () => {
                       setErrors((prev) => ({ ...prev, email: undefined }));
                     }}
                     className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+                    pattern={EMAIL_PATTERN.source}
+                    title="Please enter a valid email address, for example name@example.com"
+                    autoComplete="email"
                     required
                   />
                 </div>

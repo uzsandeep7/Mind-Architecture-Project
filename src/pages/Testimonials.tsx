@@ -19,7 +19,7 @@ const testimonials: Testimonial[] = [
     role: "CEO",
     company: "TechStart Ventures",
     content:
-      "Dr. Williams completely transformed my approach to leadership. His Mind Architecture framework helped me overcome self-doubt and lead my company through our most challenging period.",
+      "Dima completely transformed my approach to leadership. Her Mind Architecture framework helped me overcome self-doubt and lead my company through our most challenging period.",
     rating: 5,
     imageUrl:
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
@@ -41,7 +41,7 @@ const testimonials: Testimonial[] = [
     role: "Executive Coach",
     company: "Thompson Consulting",
     content:
-      "As a coach myself, I’m selective about who I learn from. Marcus’s methodology is backed by real results.",
+      "As a coach myself, I’m selective about who I learn from. Dima’s methodology is backed by real results.",
     rating: 5,
     imageUrl:
       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",

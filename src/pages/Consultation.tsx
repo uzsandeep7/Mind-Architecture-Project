@@ -8,7 +8,7 @@ import { Calendar, Clock, MessageSquare, Video, User, CheckCircle } from "lucide
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 const consultationTypes = [
@@ -17,7 +17,6 @@ const consultationTypes = [
     icon: MessageSquare,
     title: "Discovery Call",
     duration: "30 min",
-    price: 0,
     description: "A free introductory call to discuss your goals and how we can help.",
   },
   {
@@ -25,15 +24,13 @@ const consultationTypes = [
     icon: Video,
     title: "1-on-1 Coaching",
     duration: "60 min",
-    price: 299,
-    description: "Personalized coaching session tailored to your specific challenges.",
+    description: "A personalised coaching session tailored to your specific challenges.",
   },
   {
     id: "strategic",
     icon: Calendar,
     title: "Strategic Planning",
     duration: "90 min",
-    price: 449,
     description: "Comprehensive session to map out your transformation journey.",
   },
 ];
@@ -43,10 +40,16 @@ const timeSlots = [
   "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
 ];
 
-const CALENDAR_EMBED_URL = import.meta.env.VITE_CONSULTATION_CALENDAR_URL as string | undefined;
+const rawCalendarUrl = import.meta.env.VITE_CONSULTATION_CALENDAR_URL as string | undefined;
+const CALENDAR_EMBED_URL =
+  rawCalendarUrl &&
+  !rawCalendarUrl.includes("YOUR_GOOGLE_APPOINTMENT_OR_CALENDLY_EMBED_LINK")
+    ? rawCalendarUrl
+    : undefined;
 
 const ConsultationPage = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [searchParams] = useSearchParams();
 
   const [selectedType, setSelectedType] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -61,6 +64,30 @@ const ConsultationPage = () => {
   const [isBooked, setIsBooked] = useState(false);
 
   const navigate = useNavigate();
+
+  const getErrorMessage = (error: unknown) => {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "object" && error !== null && "message" in error) {
+      const message = (error as { message?: unknown }).message;
+      if (typeof message === "string" && message.trim()) return message;
+    }
+    return "Failed to book consultation. Please try again.";
+  };
+
+  useEffect(() => {
+    const requestedType = searchParams.get("type")?.trim().toLowerCase();
+    if (!requestedType) return;
+
+    const matchedType = consultationTypes.find((type) => {
+      const title = type.title.trim().toLowerCase();
+      const id = type.id.trim().toLowerCase();
+      return title === requestedType || id === requestedType;
+    });
+
+    if (matchedType) {
+      setSelectedType(matchedType.id);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -121,7 +148,7 @@ const ConsultationPage = () => {
     } else {
       // If calendar integration is ON, ensure you at least set the embed URL
       if (!CALENDAR_EMBED_URL) {
-        toast.error("Calendar integration URL is missing. Please add it to .env.local");
+        toast.error("Calendar integration URL is missing. Please add your real booking link.");
         return;
       }
     }
@@ -160,7 +187,7 @@ const ConsultationPage = () => {
       toast.success("Consultation request submitted successfully!");
     } catch (error) {
       console.error("Error booking consultation:", error);
-      toast.error("Failed to book consultation. Please try again.");
+      toast.error(getErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -187,8 +214,11 @@ const ConsultationPage = () => {
                 We’ll send confirmation details shortly.
               </p>
               <div className="flex gap-4 justify-center">
-                <Button variant="gold" onClick={() => navigate("/dashboard")}>
-                  View My Bookings
+                <Button
+                  variant="gold"
+                  onClick={() => navigate("/dashboard?tab=consultations")}
+                >
+                  View My Consultations
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/")}>
                   Back to Home
@@ -259,7 +289,9 @@ const ConsultationPage = () => {
 
                 {useCalendarIntegration && (
                   <p className="text-sm text-muted-foreground mt-3">
-                    This uses an embedded scheduler connected to the admin’s Google Calendar.
+                    This uses your embedded booking scheduler so visitors can
+                    choose a time directly before submitting their consultation
+                    request. No payment is required to book a consultation.
                   </p>
                 )}
               </div>
@@ -269,6 +301,11 @@ const ConsultationPage = () => {
                 <h2 className="text-xl font-heading font-bold mb-4">
                   1. Choose Consultation Type
                 </h2>
+                {selectedType && (
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Your consultation option has been preselected. You can keep it or choose another option below.
+                  </p>
+                )}
                 <div className="grid md:grid-cols-3 gap-4">
                   {consultationTypes.map((type) => (
                     <motion.div
@@ -288,8 +325,8 @@ const ConsultationPage = () => {
                       <p className="text-sm text-muted-foreground mb-2">{type.description}</p>
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">{type.duration}</span>
-                        <span className="font-bold text-primary">
-                          {type.price === 0 ? "Free" : `$${type.price}`}
+                        <span className="font-semibold uppercase tracking-wide text-primary">
+                          Free
                         </span>
                       </div>
                     </motion.div>
@@ -308,27 +345,54 @@ const ConsultationPage = () => {
                     <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5">
                       <p className="font-medium mb-2">Calendar URL missing</p>
                       <p className="text-sm text-muted-foreground">
-                        Add this to <code className="px-1 py-0.5 rounded bg-muted">.env.local</code>:
+                        Add your real booking link to{" "}
+                        <code className="px-1 py-0.5 rounded bg-muted">.env</code>:
                         <br />
                         <code className="block mt-2 px-2 py-2 rounded bg-muted">
-                          VITE_CONSULTATION_CALENDAR_URL=YOUR_LINK
+                          VITE_CONSULTATION_CALENDAR_URL=https://your-booking-link
                         </code>
                       </p>
                     </div>
                   ) : (
-                    <div className="rounded-2xl overflow-hidden border border-border bg-card">
-                      <iframe
-                        title="Book a Consultation"
-                        src={CALENDAR_EMBED_URL}
-                        width="100%"
-                        height="750"
-                        frameBorder="0"
-                      />
+                    <div className="space-y-4">
+                      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
+                        <div className="mb-4 rounded-2xl bg-white px-5 py-4 text-slate-900">
+                          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-600">
+                            Live Booking Calendar
+                          </p>
+                          <h3 className="mt-2 text-2xl font-heading font-bold text-slate-900">
+                            Choose Your Consultation Time
+                          </h3>
+                          <p className="mt-2 text-sm text-slate-600">
+                            Select a suitable day and time directly in the
+                            scheduler below. If the embedded view feels tight on
+                            your device, you can also open the calendar in a new
+                            tab.
+                          </p>
+                        </div>
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                          <iframe
+                            title="Book a Consultation"
+                            src={CALENDAR_EMBED_URL}
+                            width="100%"
+                            height="780"
+                            frameBorder="0"
+                            className="min-h-[780px] bg-white"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button variant="outline" asChild>
+                          <a href={CALENDAR_EMBED_URL} target="_blank" rel="noreferrer">
+                            Open Booking Calendar
+                          </a>
+                        </Button>
+                      </div>
                     </div>
                   )}
 
                   <p className="text-sm text-muted-foreground mt-3">
-                    After selecting a slot above, submit this form to save your request in the system.
+                    After selecting a slot above, click <span className="font-medium text-foreground">Confirm and Save Consultation</span> below so the booking is also saved in your dashboard.
                   </p>
                 </div>
               ) : (
@@ -417,14 +481,9 @@ const ConsultationPage = () => {
 
               {/* Submit */}
               <div className="flex items-center justify-between pt-6 border-t border-border">
-                <div>
-                  {selectedType && (
-                    <p className="text-lg font-bold">
-                      Total: $
-                      {consultationTypes.find((t) => t.id === selectedType)?.price || 0}
-                    </p>
-                  )}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Consultations are request-based and do not require payment at this stage.
+                </p>
 
                 {!user ? (
                   <Button
@@ -448,7 +507,7 @@ const ConsultationPage = () => {
                       (useCalendarIntegration && !CALENDAR_EMBED_URL)
                     }
                   >
-                    {isSubmitting ? "Submitting..." : "Confirm Booking"}
+                    {isSubmitting ? "Saving Consultation..." : "Confirm and Save Consultation"}
                   </Button>
                 )}
               </div>

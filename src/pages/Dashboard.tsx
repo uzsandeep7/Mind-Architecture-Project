@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Calendar,
+  ExternalLink,
   Package,
   MessageSquare,
   User,
@@ -15,7 +16,7 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ interface Consultation {
   id: string;
   date: string;
   topic: string | null;
+  message?: string | null;
   status: string;
   created_at: string;
 }
@@ -55,22 +57,44 @@ interface Profile {
   membership_tier: string;
 }
 
+interface MembershipStatus {
+  status: string;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+  cancelAt: string | null;
+}
+
 const PENDING_ORDER_EXPIRY_MS = 60 * 60 * 1000;
 
 const buildAustraliaPostTrackingUrl = (trackingNumber: string) =>
   `https://auspost.com.au/mypost/track/search?trackingNumber=${encodeURIComponent(trackingNumber)}`;
 
+const isExpiredPendingOrder = (order: { status: string; created_at: string }) =>
+  order.status === "pending" &&
+  new Date(order.created_at).getTime() < Date.now() - PENDING_ORDER_EXPIRY_MS;
+
+const getPendingOrderExpiry = (createdAt: string) =>
+  new Date(new Date(createdAt).getTime() + PENDING_ORDER_EXPIRY_MS);
+
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, isLoading, signOut } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [eventBookings, setEventBookings] = useState<EventBooking[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [membershipStatus, setMembershipStatus] = useState<MembershipStatus | null>(null);
+  const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const validTabs = ["bookings", "orders", "consultations", "profile"] as const;
+  const requestedTab = searchParams.get("tab");
+  const activeTab = validTabs.includes((requestedTab as (typeof validTabs)[number]) ?? "bookings")
+    ? (requestedTab as (typeof validTabs)[number])
+    : "bookings";
 
   useEffect(() => {
     if (!user) return;
@@ -118,7 +142,7 @@ const DashboardPage = () => {
           .order("created_at", { ascending: false }),
         supabase
           .from("consultations")
-          .select("id, date, topic, status, created_at")
+          .select("id, date, topic, message, status, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
       ]);
@@ -136,7 +160,11 @@ const DashboardPage = () => {
       if (ordersResult.error) {
         console.error("Error loading orders:", ordersResult.error);
       } else {
-        setOrders((ordersResult.data ?? []) as unknown as Order[]);
+        setOrders(
+          ((ordersResult.data ?? []) as unknown as Order[]).map((order) =>
+            isExpiredPendingOrder(order) ? { ...order, status: "cancelled" } : order,
+          ),
+        );
       }
 
       if (consultationsResult.error) {
@@ -163,6 +191,20 @@ const DashboardPage = () => {
           avatar_url: null,
           membership_tier: "free",
         });
+      }
+
+      const resolvedTier = data?.membership_tier === "premium" ? "premium" : "free";
+      if (resolvedTier === "premium") {
+        const { data: membershipData, error: membershipError } = await supabase.functions.invoke("get-membership-status");
+
+        if (membershipError) {
+          console.error("Error loading membership status:", membershipError);
+          setMembershipStatus(null);
+        } else {
+          setMembershipStatus((membershipData?.membership ?? null) as MembershipStatus | null);
+        }
+      } else {
+        setMembershipStatus(null);
       }
     };
 
@@ -220,6 +262,39 @@ const DashboardPage = () => {
     }
   };
 
+  const membershipDateLabel = membershipStatus?.cancelAtPeriodEnd
+    ? "Membership ends on"
+    : "Next renewal on";
+  const membershipDateValue = membershipStatus?.cancelAt ?? membershipStatus?.currentPeriodEnd;
+
+  const handleResumeOrderPayment = async (orderId: string) => {
+    setRetryingOrderId(orderId);
+
+    try {
+      const successUrl = `${window.location.origin}/checkout?success=1&session_id={CHECKOUT_SESSION_ID}&order_id=${orderId}`;
+      const cancelUrl = `${window.location.origin}/checkout?canceled=1&order_id=${orderId}`;
+
+      const { data, error } = await supabase.functions.invoke("create-book-checkout", {
+        body: {
+          orderId,
+          successUrl,
+          cancelUrl,
+        },
+      });
+
+      if (error || !data?.url) {
+        throw error ?? new Error("Failed to reopen Stripe checkout");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Error resuming order payment:", error);
+      const message = error instanceof Error ? error.message : "Failed to reopen payment checkout.";
+      toast.error(message);
+      setRetryingOrderId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -274,6 +349,11 @@ const DashboardPage = () => {
               <p className="mt-1 text-xs uppercase tracking-[0.2em] text-yellow-400/90">
                 {profile?.membership_tier === "premium" ? "Premium Member" : "Free Member"}
               </p>
+              {profile?.membership_tier === "premium" && membershipDateValue ? (
+                <p className="mt-2 text-sm text-white/75">
+                  {membershipDateLabel} {format(new Date(membershipDateValue), "PPP")}
+                </p>
+              ) : null}
             </div>
             <Button
               variant="goldOutline"
@@ -289,7 +369,15 @@ const DashboardPage = () => {
       {/* Tabs Section (✅ dark background so no white overlaps under navbar) */}
       <section className="section-padding bg-gray-950 text-white">
         <div className="container-wide">
-          <Tabs defaultValue="bookings" className="space-y-8">
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => {
+              const nextParams = new URLSearchParams(searchParams);
+              nextParams.set("tab", value);
+              setSearchParams(nextParams, { replace: true });
+            }}
+            className="space-y-8"
+          >
             <TabsList className="grid grid-cols-4 w-full max-w-xl bg-white/5 border border-white/10 rounded-full p-1">
               <TabsTrigger
                 value="bookings"
@@ -416,6 +504,23 @@ const DashboardPage = () => {
                                 </Button>
                               </div>
                             ) : null}
+                            {order.status === "pending" ? (
+                              <div className="mt-3 space-y-2">
+                                <p className="text-xs text-white/60">
+                                  Pending until {format(getPendingOrderExpiry(order.created_at), "PPP p")}. Complete payment before then or this order will be cancelled automatically.
+                                </p>
+                                <Button
+                                  variant="goldOutline"
+                                  size="sm"
+                                  className="h-8 px-3"
+                                  disabled={retryingOrderId === order.id}
+                                  onClick={() => void handleResumeOrderPayment(order.id)}
+                                >
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  {retryingOrderId === order.id ? "Opening Checkout..." : "Complete Payment"}
+                                </Button>
+                              </div>
+                            ) : null}
                           </div>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
@@ -461,9 +566,10 @@ const DashboardPage = () => {
                               {consultation.topic || "Consultation"}
                             </h3>
                             <p className="text-sm text-white/70">
+                              Requested on{" "}
                               {format(
-                                new Date(consultation.date),
-                                "PPP 'at' p"
+                                new Date(consultation.created_at),
+                                "PPP",
                               )}
                             </p>
                           </div>
@@ -475,6 +581,32 @@ const DashboardPage = () => {
                             {consultation.status.charAt(0).toUpperCase() +
                               consultation.status.slice(1)}
                           </span>
+                        </div>
+                        <div className="mt-4 space-y-2 text-sm text-white/80">
+                          <p>
+                            <span className="font-medium text-white">Consultation time:</span>{" "}
+                            {consultation.status === "confirmed" || consultation.status === "completed"
+                              ? format(new Date(consultation.date), "PPP 'at' p")
+                              : "Awaiting confirmation from Mind Architecture"}
+                          </p>
+                          <p>
+                            <span className="font-medium text-white">Current update:</span>{" "}
+                            {consultation.status === "pending"
+                              ? "Your request has been received and is waiting for confirmation."
+                              : consultation.status === "confirmed"
+                                ? "Your consultation has been approved."
+                                : consultation.status === "completed"
+                                  ? "Your consultation has been completed."
+                                  : consultation.status === "cancelled"
+                                    ? "This consultation request was cancelled."
+                                    : `Status: ${consultation.status}`}
+                          </p>
+                          {consultation.message ? (
+                            <p className="text-white/70">
+                              <span className="font-medium text-white">Notes:</span>{" "}
+                              {consultation.message}
+                            </p>
+                          ) : null}
                         </div>
                       </CardContent>
                     </Card>
@@ -530,6 +662,32 @@ const DashboardPage = () => {
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="Enter your phone number"
                         className="bg-black/40 border-white/10 text-white placeholder:text-white/40"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/80">Membership Plan</Label>
+                      <Input
+                        value={profile?.membership_tier === "premium" ? "Premium" : "Free"}
+                        readOnly
+                        className="bg-black/40 border-white/10 text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white/80">
+                        {profile?.membership_tier === "premium"
+                          ? membershipDateLabel
+                          : "Membership Status"}
+                      </Label>
+                      <Input
+                        value={
+                          profile?.membership_tier === "premium"
+                            ? membershipDateValue
+                              ? format(new Date(membershipDateValue), "PPP")
+                              : "Premium active"
+                            : "Free plan"
+                        }
+                        readOnly
+                        className="bg-black/40 border-white/10 text-white"
                       />
                     </div>
                     <div>

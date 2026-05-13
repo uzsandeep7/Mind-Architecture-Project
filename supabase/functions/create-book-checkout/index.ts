@@ -40,7 +40,7 @@ serve(async (req) => {
     }
 
     const { orderId, successUrl, cancelUrl, items } = await req.json();
-    if (!orderId || !successUrl || !cancelUrl || !Array.isArray(items)) {
+    if (!orderId || !successUrl || !cancelUrl) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -65,8 +65,30 @@ serve(async (req) => {
       });
     }
 
+    let checkoutItems = Array.isArray(items) ? items : [];
+
+    if (checkoutItems.length === 0) {
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from("order_items")
+        .select("quantity, price, book:books(title)")
+        .eq("order_id", order.id);
+
+      if (orderItemsError) {
+        return new Response(JSON.stringify({ error: orderItemsError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      checkoutItems = (orderItems ?? []).map((item) => ({
+        title: item.book?.title ?? "Book Purchase",
+        quantity: item.quantity,
+        price: item.price,
+      }));
+    }
+
     const lineItems =
-      items.map((item) => ({
+      checkoutItems.map((item) => ({
         quantity: Number(item.quantity) || 1,
         price_data: {
           currency: "aud",

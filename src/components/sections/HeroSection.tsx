@@ -32,7 +32,7 @@ export const HeroSection = () => {
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 text-sm font-medium mb-6">
               <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-              Resilience Training & Development
+              Clarity Under Pressure
             </span>
           </motion.div>
 
@@ -43,9 +43,9 @@ export const HeroSection = () => {
             transition={{ duration: 0.6, delay: 0.1 }}
             className="text-5xl sm:text-6xl md:text-7xl lg:text-[84px] font-heading font-bold text-white leading-tight mb-6"
           >
-            Build the{" "}
-            <span className="text-gradient-gold">Architecture</span>{" "}
-            of Your Mind
+            Clarity{" "}
+            <span className="text-gradient-gold">Under</span>{" "}
+            Pressure
           </motion.h1>
 
           {/* Description */}
@@ -55,9 +55,11 @@ export const HeroSection = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-lg md:text-xl text-white/80 leading-relaxed mb-10 max-w-3xl"
           >
-            Helping professionals navigate stress, burnout, and success with
-            resilience and belonging. Mind Architecture builds ecosystems of
-            care inside organisations, families, and communities.
+            Helping individuals and organisations think clearly, lead
+            intentionally, and navigate life without overwhelm. Through lived
+            experience and practical frameworks, Mind Architecture helps people
+            regulate how they respond and lead themselves with greater clarity,
+            direction, and control.
           </motion.p>
 
           {/* Buttons */}

@@ -25,9 +25,10 @@ export const CTASection = () => {
             <span className="text-gradient-gold"> Rise</span>
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto mb-10">
-            Whether you're looking to navigate stress, build resilience, or create 
-            ecosystems of care within your organisation, we're here to guide 
-            you every step of the way.
+            Whether you&apos;re looking for a keynote speaker, workshop
+            facilitator, corporate program, advisory support, or a meaningful
+            conversation around resilience, leadership, and intentional
+            thinking, we&apos;re here to help.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -47,7 +48,7 @@ export const CTASection = () => {
 
           {/* Trust Badge */}
           <p className="text-muted-foreground text-sm mt-8">
-            Empowering leaders to transform stress into clarity and purpose
+            Clarity under pressure starts with intentional thinking
           </p>
         </motion.div>
       </div>

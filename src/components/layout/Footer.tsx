@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, Facebook, Instagram, Linkedin } from "lucide-react";
 import mindArchitectureLogo from "@/assets/mind-architecture-logo.webp";
 
 const footerLinks = {
@@ -32,10 +32,39 @@ export const Footer = () => {
               />
             </Link>
             <p className="mb-6 text-sm leading-relaxed text-cream/70">
-              Helping professionals navigate stress, burnout, and success with
-              resilience and belonging. Building ecosystems of care inside
-              organisations, families, and communities.
+              Clarity Under Pressure. Helping individuals and organisations
+              think clearly, lead intentionally, and navigate life without
+              overwhelm.
             </p>
+            <div className="flex items-center gap-3">
+              <a
+                href="https://www.facebook.com/DimaIstambouli"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-cream/10 p-2 text-cream/70 transition-colors hover:text-primary"
+                aria-label="Facebook"
+              >
+                <Facebook size={18} />
+              </a>
+              <a
+                href="https://www.instagram.com/mindarchitecture.au/"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-cream/10 p-2 text-cream/70 transition-colors hover:text-primary"
+                aria-label="Instagram"
+              >
+                <Instagram size={18} />
+              </a>
+              <a
+                href="https://www.linkedin.com/in/dimaistambouli/"
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-cream/10 p-2 text-cream/70 transition-colors hover:text-primary"
+                aria-label="LinkedIn"
+              >
+                <Linkedin size={18} />
+              </a>
+            </div>
           </div>
 
           <div>
@@ -82,27 +111,27 @@ export const Footer = () => {
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="mt-0.5 shrink-0 text-primary" />
                 <span className="text-sm text-cream/70">
-                  Melbourne, VIC
+                  19 Railway Street
                   <br />
-                  Australia
+                  Banksia NSW 2216
                 </span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone size={18} className="shrink-0 text-primary" />
                 <a
-                  href="tel:+61412345678"
+                  href="tel:+61404158030"
                   className="text-sm text-cream/70 transition-colors hover:text-primary"
                 >
-                  Contact Us
+                  +61 404 158 030
                 </a>
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={18} className="shrink-0 text-primary" />
                 <a
-                  href="mailto:hello@mindarchitecture.com.au"
+                  href="mailto:info@mindarchitecture.com.au"
                   className="text-sm text-cream/70 transition-colors hover:text-primary"
                 >
-                  hello@mindarchitecture.com.au
+                  info@mindarchitecture.com.au
                 </a>
               </li>
             </ul>

@@ -39,42 +39,43 @@ serve(async (req) => {
       });
     }
 
-    const { priceId, successUrl, cancelUrl } = await req.json();
-    if (!priceId || !successUrl || !cancelUrl) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
+    const { returnUrl } = await req.json();
+    if (!returnUrl) {
+      return new Response(JSON.stringify({ error: "Missing return URL" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!user.email) {
+      return new Response(JSON.stringify({ error: "User email is required to manage membership" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const customers = await stripe.customers.list({
-      email: user.email ?? "",
+      email: user.email,
       limit: 10,
     });
 
     const customer =
       customers.data.find((entry) => entry.metadata?.user_id === user.id) ??
-      customers.data[0] ??
-      await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: {
-          user_id: user.id,
-        },
-      });
+      customers.data[0];
 
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      payment_method_types: ["card"],
+    if (!customer) {
+      return new Response(JSON.stringify({ error: "No Stripe customer record was found for this membership" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create({
       customer: customer.id,
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      metadata: {
-        user_id: user.id,
-      },
+      return_url: returnUrl,
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    return new Response(JSON.stringify({ url: portalSession.url }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
