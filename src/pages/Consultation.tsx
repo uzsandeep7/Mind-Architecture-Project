@@ -40,13 +40,6 @@ const timeSlots = [
   "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM"
 ];
 
-const rawCalendarUrl = import.meta.env.VITE_CONSULTATION_CALENDAR_URL as string | undefined;
-const CALENDAR_EMBED_URL =
-  rawCalendarUrl &&
-  !rawCalendarUrl.includes("YOUR_GOOGLE_APPOINTMENT_OR_CALENDLY_EMBED_LINK")
-    ? rawCalendarUrl
-    : undefined;
-
 const ConsultationPage = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [searchParams] = useSearchParams();
@@ -57,8 +50,6 @@ const ConsultationPage = () => {
 
   const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
-
-  const [useCalendarIntegration, setUseCalendarIntegration] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBooked, setIsBooked] = useState(false);
@@ -139,31 +130,15 @@ const ConsultationPage = () => {
       return;
     }
 
-    // If not using calendar integration, enforce date/time
-    if (!useCalendarIntegration) {
-      if (!selectedDate || !selectedTime) {
-        toast.error("Please select date and time");
-        return;
-      }
-    } else {
-      // If calendar integration is ON, ensure you at least set the embed URL
-      if (!CALENDAR_EMBED_URL) {
-        toast.error("Calendar integration URL is missing. Please add your real booking link.");
-        return;
-      }
+    if (!selectedDate || !selectedTime) {
+      toast.error("Please select date and time");
+      return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // If using manual date/time -> store selected slot
-      // If using calendar embed -> store a placeholder timestamp + notes (prototype-friendly)
-      let dateTime: Date;
-      if (!useCalendarIntegration) {
-        dateTime = new Date(`${selectedDate}T${convertTo24Hour(selectedTime)}`);
-      } else {
-        dateTime = new Date(); // placeholder for prototype
-      }
+      const dateTime = new Date(`${selectedDate}T${convertTo24Hour(selectedTime)}`);
 
       const typeTitle = consultationTypes.find((t) => t.id === selectedType)?.title ?? selectedType;
 
@@ -173,11 +148,7 @@ const ConsultationPage = () => {
           user_id: user.id,
           date: dateTime.toISOString(),
           topic: `${typeTitle}${topic ? ` - ${topic}` : ""}`,
-          message: `${message ? message + "\n\n" : ""}${
-            useCalendarIntegration
-              ? "Booking method: Google Calendar integration (embedded scheduler)"
-              : `Requested slot: ${selectedDate} ${selectedTime}`
-          }`,
+          message: `${message ? message + "\n\n" : ""}Requested slot: ${selectedDate} ${selectedTime}`,
           status: "pending",
         });
 
@@ -249,7 +220,7 @@ const ConsultationPage = () => {
               <span className="text-gradient-gold"> Journey Today</span>
             </h1>
             <p className="text-cream/70 text-lg">
-              Schedule a personalised session to discuss your goals and create a roadmap for your transformation.
+              Schedule a personalised session to discuss your goals and choose a time that works best for you.
             </p>
           </motion.div>
         </div>
@@ -260,41 +231,6 @@ const ConsultationPage = () => {
         <div className="container-wide">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleSubmit} className="space-y-8">
-
-              {/* Step 0: Choose booking method */}
-              <div className="p-5 rounded-xl border border-border bg-card">
-                <h2 className="text-xl font-heading font-bold mb-3">
-                  Booking Method
-                </h2>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    variant={useCalendarIntegration ? "gold" : "outline"}
-                    onClick={() => setUseCalendarIntegration(true)}
-                  >
-                    <Calendar size={16} className="mr-2" />
-                    Book via Google Calendar
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant={!useCalendarIntegration ? "gold" : "outline"}
-                    onClick={() => setUseCalendarIntegration(false)}
-                  >
-                    <Clock size={16} className="mr-2" />
-                    Pick a time manually
-                  </Button>
-                </div>
-
-                {useCalendarIntegration && (
-                  <p className="text-sm text-muted-foreground mt-3">
-                    This uses your embedded booking scheduler so visitors can
-                    choose a time directly before submitting their consultation
-                    request. No payment is required to book a consultation.
-                  </p>
-                )}
-              </div>
 
               {/* Step 1: Select Type */}
               <div>
@@ -334,126 +270,64 @@ const ConsultationPage = () => {
                 </div>
               </div>
 
-              {/* Step 2+3: Calendar OR manual date/time */}
-              {useCalendarIntegration ? (
-                <div>
-                  <h2 className="text-xl font-heading font-bold mb-4">
-                    2. Select a Time (Google Calendar)
-                  </h2>
-
-                  {!CALENDAR_EMBED_URL ? (
-                    <div className="p-5 rounded-xl border border-destructive/30 bg-destructive/5">
-                      <p className="font-medium mb-2">Calendar URL missing</p>
-                      <p className="text-sm text-muted-foreground">
-                        Add your real booking link to{" "}
-                        <code className="px-1 py-0.5 rounded bg-muted">.env</code>:
-                        <br />
-                        <code className="block mt-2 px-2 py-2 rounded bg-muted">
-                          VITE_CONSULTATION_CALENDAR_URL=https://your-booking-link
-                        </code>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="rounded-3xl border border-border bg-card p-4 shadow-soft">
-                        <div className="mb-4 rounded-2xl bg-white px-5 py-4 text-slate-900">
-                          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-600">
-                            Live Booking Calendar
-                          </p>
-                          <h3 className="mt-2 text-2xl font-heading font-bold text-slate-900">
-                            Choose Your Consultation Time
-                          </h3>
-                          <p className="mt-2 text-sm text-slate-600">
-                            Select a suitable day and time directly in the
-                            scheduler below. If the embedded view feels tight on
-                            your device, you can also open the calendar in a new
-                            tab.
-                          </p>
-                        </div>
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                          <iframe
-                            title="Book a Consultation"
-                            src={CALENDAR_EMBED_URL}
-                            width="100%"
-                            height="780"
-                            frameBorder="0"
-                            className="min-h-[780px] bg-white"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button variant="outline" asChild>
-                          <a href={CALENDAR_EMBED_URL} target="_blank" rel="noreferrer">
-                            Open Booking Calendar
-                          </a>
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  <p className="text-sm text-muted-foreground mt-3">
-                    After selecting a slot above, click <span className="font-medium text-foreground">Confirm and Save Consultation</span> below so the booking is also saved in your dashboard.
-                  </p>
+              {/* Step 2: Select Date */}
+              <div>
+                <h2 className="text-xl font-heading font-bold mb-4">
+                  2. Select Date
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {availableDates.map((date) => (
+                    <button
+                      key={date}
+                      type="button"
+                      onClick={() => setSelectedDate(date)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedDate === date
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {new Date(date).toLocaleDateString("en-US", {
+                        weekday: "short",
+                        month: "short",
+                        day: "numeric"
+                      })}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  {/* Step 2: Select Date */}
-                  <div>
-                    <h2 className="text-xl font-heading font-bold mb-4">
-                      2. Select Date
-                    </h2>
-                    <div className="flex flex-wrap gap-2">
-                      {availableDates.map((date) => (
-                        <button
-                          key={date}
-                          type="button"
-                          onClick={() => setSelectedDate(date)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedDate === date
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                          }`}
-                        >
-                          {new Date(date).toLocaleDateString("en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric"
-                          })}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              </div>
 
-                  {/* Step 3: Select Time */}
-                  <div>
-                    <h2 className="text-xl font-heading font-bold mb-4">
-                      3. Select Time
-                    </h2>
-                    <div className="flex flex-wrap gap-2">
-                      {timeSlots.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => setSelectedTime(time)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            selectedTime === time
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                          }`}
-                        >
-                          <Clock size={14} className="inline mr-1" />
-                          {time}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+              {/* Step 3: Select Time */}
+              <div>
+                <h2 className="text-xl font-heading font-bold mb-4">
+                  3. Select Time
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {timeSlots.map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => setSelectedTime(time)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        selectedTime === time
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      <Clock size={14} className="inline mr-1" />
+                      {time}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground mt-3">
+                  Choose your preferred slot, then click <span className="font-medium text-foreground">Confirm and Save Consultation</span> below so it appears in your dashboard.
+                </p>
+              </div>
 
               {/* Step 4: Additional Info */}
               <div>
                 <h2 className="text-xl font-heading font-bold mb-4">
-                  {useCalendarIntegration ? "3. Tell Us More (Optional)" : "4. Tell Us More (Optional)"}
+                  4. Tell Us More (Optional)
                 </h2>
                 <div className="space-y-4">
                   <div>
@@ -503,8 +377,8 @@ const ConsultationPage = () => {
                     disabled={
                       isSubmitting ||
                       !selectedType ||
-                      (!useCalendarIntegration && (!selectedDate || !selectedTime)) ||
-                      (useCalendarIntegration && !CALENDAR_EMBED_URL)
+                      !selectedDate ||
+                      !selectedTime
                     }
                   >
                     {isSubmitting ? "Saving Consultation..." : "Confirm and Save Consultation"}
