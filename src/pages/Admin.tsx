@@ -35,6 +35,7 @@ import {
   Save,
   ChevronDown,
   ChevronUp,
+  Star,
 } from "lucide-react";
 import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -67,6 +68,7 @@ type OrderRow = Database["public"]["Tables"]["orders"]["Row"];
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type EventBookingRow = Database["public"]["Tables"]["event_bookings"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
+type TestimonialRow = Database["public"]["Tables"]["testimonials"]["Row"];
 
 type OrderItemWithBook = {
   quantity: number;
@@ -223,6 +225,7 @@ const AdminDashboard = () => {
   const [eventBookings, setEventBookings] = useState<EventBookingRow[]>([]);
   const [orderItems, setOrderItems] = useState<OrderItemWithBook[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
+  const [testimonials, setTestimonials] = useState<TestimonialRow[]>([]);
   const [messageFilter, setMessageFilter] = useState<"unread" | "all">("unread");
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [consultations, setConsultations] = useState<ConsultationRow[]>([]);
@@ -234,14 +237,17 @@ const AdminDashboard = () => {
   const [isEventDialogOpen, setIsEventDialogOpen] = useState(false);
   const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
+  const [isTestimonialDialogOpen, setIsTestimonialDialogOpen] = useState(false);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isSavingBook, setIsSavingBook] = useState(false);
   const [isSavingPost, setIsSavingPost] = useState(false);
+  const [isSavingTestimonial, setIsSavingTestimonial] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
   const [membershipUpdatingId, setMembershipUpdatingId] = useState<string | null>(null);
   const [selectedOrderGroup, setSelectedOrderGroup] = useState("Pending Payment");
   const [expandedEventBookingsId, setExpandedEventBookingsId] = useState<string | null>(null);
+  const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -279,6 +285,16 @@ const AdminDashboard = () => {
     is_members_only: false,
     is_published: false,
   });
+  const [newTestimonial, setNewTestimonial] = useState({
+    name: "",
+    role: "",
+    company: "",
+    content: "",
+    rating: "5",
+    image_url: "",
+    display_order: "0",
+    is_published: true,
+  });
 
   useEffect(() => {
     if (!isLoading && user && isAdmin) {
@@ -310,6 +326,7 @@ const AdminDashboard = () => {
         eventBookingsResult,
         orderItemsResult,
         messagesResult,
+        testimonialsResult,
         consultationsResult,
         profilesResult,
         rolesResult,
@@ -323,6 +340,7 @@ const AdminDashboard = () => {
         supabase.from("event_bookings").select("*").order("created_at", { ascending: false }),
         supabase.from("order_items").select("quantity, price, book:books(title)"),
         supabase.from("contact_messages").select("*").order("created_at", { ascending: false }),
+        supabase.from("testimonials").select("*").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
         supabase.from("consultations").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*"),
@@ -355,6 +373,10 @@ const AdminDashboard = () => {
 
       if (orderItemsResult.error) {
         console.warn("Failed to load order items for admin analytics:", orderItemsResult.error);
+      }
+
+      if (testimonialsResult.error) {
+        console.warn("Failed to load testimonials. Apply the testimonials migration in Supabase.", testimonialsResult.error);
       }
 
       setEvents(
@@ -414,6 +436,7 @@ const AdminDashboard = () => {
           date: formatDate(message.created_at),
         })),
       );
+      setTestimonials(testimonialsResult.error ? [] : testimonialsResult.data ?? []);
       setConsultations(consultationsResult.data ?? []);
       setConsultationDrafts(
         Object.fromEntries(
@@ -665,6 +688,21 @@ const AdminDashboard = () => {
     });
   };
 
+  const resetTestimonialForm = () => {
+    setEditingTestimonialId(null);
+    setIsTestimonialDialogOpen(false);
+    setNewTestimonial({
+      name: "",
+      role: "",
+      company: "",
+      content: "",
+      rating: "5",
+      image_url: "",
+      display_order: "0",
+      is_published: true,
+    });
+  };
+
   const adminAssetBucket = "admin-assets";
 
   const sanitizeFileName = (fileName: string) =>
@@ -845,8 +883,45 @@ const AdminDashboard = () => {
     }
   };
 
+  const saveTestimonial = async () => {
+    if (!newTestimonial.name.trim() || !newTestimonial.content.trim()) {
+      toast.error("Please add the testimonial name and message");
+      return;
+    }
+
+    setIsSavingTestimonial(true);
+    try {
+      const payload = {
+        name: newTestimonial.name.trim(),
+        role: newTestimonial.role.trim() || null,
+        company: newTestimonial.company.trim() || null,
+        content: newTestimonial.content.trim(),
+        rating: Math.min(5, Math.max(1, Number(newTestimonial.rating) || 5)),
+        image_url: newTestimonial.image_url.trim() || null,
+        display_order: Number(newTestimonial.display_order) || 0,
+        is_published: newTestimonial.is_published,
+      };
+
+      const query = editingTestimonialId
+        ? supabase.from("testimonials").update(payload).eq("id", editingTestimonialId)
+        : supabase.from("testimonials").insert(payload);
+
+      const { error } = await query;
+      if (error) throw error;
+
+      toast.success(editingTestimonialId ? "Testimonial updated" : "Testimonial added");
+      resetTestimonialForm();
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to save testimonial:", error);
+      toast.error(getErrorMessage(error) || "Failed to save testimonial");
+    } finally {
+      setIsSavingTestimonial(false);
+    }
+  };
+
   const toggleVisibility = async (
-    table: "events" | "books" | "blog_posts",
+    table: "events" | "books" | "blog_posts" | "testimonials",
     row: { id: string; is_published: boolean | null },
   ) => {
     try {
@@ -870,7 +945,7 @@ const AdminDashboard = () => {
   };
 
   const deleteContent = async (
-    table: "events" | "books" | "blog_posts",
+    table: "events" | "books" | "blog_posts" | "testimonials",
     id: string,
     label: string,
   ) => {
@@ -1415,6 +1490,10 @@ const AdminDashboard = () => {
               <TabsTrigger value="blog">
                 <FileText className="w-4 h-4 mr-1" />
                 Blog
+              </TabsTrigger>
+              <TabsTrigger value="testimonials">
+                <Star className="w-4 h-4 mr-1" />
+                Testimonials
               </TabsTrigger>
               <TabsTrigger value="users">
                 <Users className="w-4 h-4 mr-1" />
@@ -2452,6 +2531,217 @@ const AdminDashboard = () => {
                     {blogPosts.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                         No blog posts yet. Create one here and it will appear in this list for editing, hiding, or deleting.
+                      </div>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Testimonials Tab */}
+            <TabsContent value="testimonials">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Manage Testimonials</CardTitle>
+                  <Dialog
+                    open={isTestimonialDialogOpen}
+                    onOpenChange={(open) => {
+                      setIsTestimonialDialogOpen(open);
+                      if (!open) resetTestimonialForm();
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="gold"
+                        size="sm"
+                        onClick={() => {
+                          setEditingTestimonialId(null);
+                          setIsTestimonialDialogOpen(true);
+                        }}
+                      >
+                        <Plus size={16} className="mr-1" /> Add Testimonial
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>{editingTestimonialId ? "Edit Testimonial" : "Add Testimonial"}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 pr-1">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label>Name</Label>
+                            <Input
+                              value={newTestimonial.name}
+                              onChange={(e) => setNewTestimonial((p) => ({ ...p, name: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <Label>Role</Label>
+                            <Input
+                              value={newTestimonial.role}
+                              onChange={(e) => setNewTestimonial((p) => ({ ...p, role: e.target.value }))}
+                              placeholder="Client, Founder, Manager"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label>Company</Label>
+                            <Input
+                              value={newTestimonial.company}
+                              onChange={(e) => setNewTestimonial((p) => ({ ...p, company: e.target.value }))}
+                            />
+                          </div>
+                          <div>
+                            <Label>Rating</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={5}
+                              value={newTestimonial.rating}
+                              onChange={(e) => setNewTestimonial((p) => ({ ...p, rating: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Testimonial</Label>
+                          <Textarea
+                            rows={5}
+                            value={newTestimonial.content}
+                            onChange={(e) => setNewTestimonial((p) => ({ ...p, content: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label>Photo URL</Label>
+                          <Input
+                            value={newTestimonial.image_url}
+                            onChange={(e) => setNewTestimonial((p) => ({ ...p, image_url: e.target.value }))}
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div>
+                          <Label>Upload photo from computer</Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) =>
+                              void handleImageUpload(
+                                "testimonial-image",
+                                e.target.files?.[0] ?? null,
+                                (value) => setNewTestimonial((p) => ({ ...p, image_url: value })),
+                              )
+                            }
+                          />
+                        </div>
+                        {newTestimonial.image_url ? (
+                          <img
+                            src={newTestimonial.image_url}
+                            alt="Testimonial preview"
+                            className="h-20 w-20 rounded-full border border-border object-cover"
+                          />
+                        ) : null}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label>Display Order</Label>
+                            <Input
+                              type="number"
+                              value={newTestimonial.display_order}
+                              onChange={(e) => setNewTestimonial((p) => ({ ...p, display_order: e.target.value }))}
+                            />
+                          </div>
+                          <label className="flex items-end gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={newTestimonial.is_published}
+                              onChange={(e) => setNewTestimonial((p) => ({ ...p, is_published: e.target.checked }))}
+                            />
+                            Published
+                          </label>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button
+                            variant="gold"
+                            className="w-full"
+                            onClick={() => void saveTestimonial()}
+                            disabled={isSavingTestimonial || uploadingField === "testimonial-image"}
+                          >
+                            {isSavingTestimonial || uploadingField === "testimonial-image" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            {editingTestimonialId ? "Save Testimonial" : "Add Testimonial"}
+                          </Button>
+                          {editingTestimonialId ? (
+                            <Button variant="outline" className="w-full" onClick={resetTestimonialForm}>
+                              Cancel
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {testimonials.map((testimonial) => (
+                      <motion.div
+                        key={testimonial.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="space-y-3 rounded-lg border border-border p-4 transition-colors hover:bg-secondary/30"
+                      >
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="font-medium">{testimonial.name}</h4>
+                              {!testimonial.is_published ? <Badge variant="secondary">Draft</Badge> : null}
+                              <Badge variant="outline">{testimonial.rating}/5</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {[testimonial.role, testimonial.company].filter(Boolean).join(", ") || "No role/company"}
+                            </p>
+                            <p className="mt-2 text-sm">{testimonial.content}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingTestimonialId(testimonial.id);
+                                setIsTestimonialDialogOpen(true);
+                                setNewTestimonial({
+                                  name: testimonial.name,
+                                  role: testimonial.role ?? "",
+                                  company: testimonial.company ?? "",
+                                  content: testimonial.content,
+                                  rating: String(testimonial.rating),
+                                  image_url: testimonial.image_url ?? "",
+                                  display_order: String(testimonial.display_order ?? 0),
+                                  is_published: Boolean(testimonial.is_published),
+                                });
+                              }}
+                            >
+                              <Star size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => void toggleVisibility("testimonials", testimonial)}
+                            >
+                              {testimonial.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              onClick={() => void deleteContent("testimonials", testimonial.id, "Testimonial")}
+                            >
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                    {testimonials.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                        No testimonials yet. Add a real client testimonial here and publish it to the Testimonials page.
                       </div>
                     ) : null}
                   </div>

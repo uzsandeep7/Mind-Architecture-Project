@@ -34,8 +34,7 @@ export const SubscriptionCheckoutModal = ({
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const taxes = plan.price * 0.1;
-  const total = plan.price + taxes;
+  const total = plan.price;
 
   const handleHostedCheckout = async () => {
     if (!user) {
@@ -157,10 +156,6 @@ export const SubscriptionCheckoutModal = ({
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>${plan.price.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Taxes (10%)</span>
-                  <span>${taxes.toFixed(2)}</span>
-                </div>
                 <div className="border-t border-border pt-3 flex justify-between font-bold">
                   <span>Total</span>
                   <span className="text-primary">${total.toFixed(2)}</span>
@@ -203,10 +198,6 @@ export const SubscriptionCheckoutModal = ({
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{plan.name}</span>
                   <span>${plan.price.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Taxes</span>
-                  <span>${taxes.toFixed(2)}</span>
                 </div>
                 <div className="border-t border-border pt-2 flex justify-between font-bold">
                   <span>Total</span>

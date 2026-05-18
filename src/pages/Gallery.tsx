@@ -1,26 +1,44 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface GalleryItem {
   id: string;
   image_url: string;
+  title?: string | null;
 }
 
-/* ✅ ONLY 7 IMAGES */
-const galleryImages: GalleryItem[] = Array.from({ length: 7 }, (_, i) => ({
+const fallbackGalleryImages: GalleryItem[] = Array.from({ length: 7 }, (_, i) => ({
   id: String(i + 1),
-  image_url: `/public/gallery${i + 1}.jpg`,
+  image_url: `/gallery${i + 1}.jpg`,
+  title: `Gallery image ${i + 1}`,
 }));
 
 const GalleryPage = () => {
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
+  const [galleryImages, setGalleryImages] = useState<GalleryItem[]>(fallbackGalleryImages);
+
+  useEffect(() => {
+    const loadGallery = async () => {
+      const { data, error } = await supabase
+        .from("gallery")
+        .select("id, image_url, title")
+        .eq("is_published", true)
+        .order("display_order", { ascending: true });
+
+      if (!error && data && data.length > 0) {
+        setGalleryImages(data);
+      }
+    };
+
+    void loadGallery();
+  }, []);
 
   return (
     <Layout>
-      {/* HERO */}
       <section className="pt-32 pb-16 bg-gradient-hero text-cream">
         <div className="container-wide">
           <motion.div
@@ -42,7 +60,6 @@ const GalleryPage = () => {
         </div>
       </section>
 
-      {/* GALLERY */}
       <section className="section-padding bg-background">
         <div className="container-wide">
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4">
@@ -58,27 +75,12 @@ const GalleryPage = () => {
                 <div className="relative overflow-hidden rounded-xl shadow-soft group">
                   <img
                     src={image.image_url}
-                    alt="Gallery image"
+                    alt={image.title || "Gallery image"}
                     loading="lazy"
-                    className="
-                      w-full
-                      h-auto
-                      transition-transform
-                      duration-500
-                      group-hover:scale-105
-                    "
+                    className="h-auto w-full transition-transform duration-500 group-hover:scale-105"
                   />
 
-                  {/* Hover overlay */}
-                  <div
-                    className="
-                      absolute inset-0
-                      bg-black/0
-                      group-hover:bg-black/30
-                      transition-colors
-                      duration-300
-                    "
-                  />
+                  <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/30" />
                 </div>
               </motion.div>
             ))}
@@ -86,7 +88,6 @@ const GalleryPage = () => {
         </div>
       </section>
 
-      {/* LIGHTBOX */}
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
         <DialogContent className="max-w-5xl p-0 bg-transparent border-none">
           <button
@@ -99,7 +100,7 @@ const GalleryPage = () => {
           {selectedImage && (
             <img
               src={selectedImage.image_url}
-              alt="Gallery preview"
+              alt={selectedImage.title || "Gallery preview"}
               className="w-full h-auto max-h-[85vh] object-contain rounded-xl"
             />
           )}
