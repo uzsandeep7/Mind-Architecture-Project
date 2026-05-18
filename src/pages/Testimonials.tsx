@@ -1,6 +1,6 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
-import { Star, Quote } from "lucide-react";
+import { Star, MessageSquareQuote } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -19,9 +19,11 @@ const TestimonialCard = ({
     whileInView={{ opacity: 1, y: 0 }}
     viewport={{ once: true }}
     transition={{ duration: 0.4, delay: index * 0.05 }}
-    className="bg-card border border-border rounded-xl p-6 shadow-soft flex flex-col"
+    className="relative overflow-hidden bg-card border border-border rounded-xl p-6 shadow-soft flex flex-col"
   >
-    <Quote className="text-primary mb-3" size={26} />
+    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+      <MessageSquareQuote size={22} />
+    </div>
 
     <div className="flex gap-1 mb-3">
       {Array.from({ length: testimonial.rating }).map((_, i) => (

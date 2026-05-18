@@ -1012,10 +1012,13 @@ const AdminDashboard = () => {
   };
 
   const deleteContent = async (
-    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery",
+    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery" | "orders" | "consultations" | "contact_messages",
     id: string,
     label: string,
   ) => {
+    const confirmed = window.confirm(`Delete this ${label.toLowerCase()}? This cannot be undone.`);
+    if (!confirmed) return;
+
     try {
       const { error } = await supabase.from(table).delete().eq("id", id);
       if (error) throw error;
@@ -2342,6 +2345,15 @@ const AdminDashboard = () => {
                               </div>
                               <div className="text-left lg:text-right">
                                 <p className="font-bold text-primary">${order.total_amount}</p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="mt-2 gap-2 text-destructive"
+                                  onClick={() => void deleteContent("orders", order.id, "Order")}
+                                >
+                                  <Trash2 size={14} />
+                                  Delete
+                                </Button>
                               </div>
                             </div>
                             {order.status !== "cancelled" ? (
@@ -2771,12 +2783,13 @@ const AdminDashboard = () => {
                             <p className="mt-2 text-sm">{testimonial.content}</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditingTestimonialId(testimonial.id);
-                                setIsTestimonialDialogOpen(true);
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() => {
+                                  setEditingTestimonialId(testimonial.id);
+                                  setIsTestimonialDialogOpen(true);
                                 setNewTestimonial({
                                   name: testimonial.name,
                                   role: testimonial.role ?? "",
@@ -2790,21 +2803,25 @@ const AdminDashboard = () => {
                               }}
                             >
                               <Star size={16} />
+                              Edit
                             </Button>
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
                               onClick={() => void toggleVisibility("testimonials", testimonial)}
                             >
                               {testimonial.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
+                              {testimonial.is_published ? "Hide" : "Publish"}
                             </Button>
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant="outline"
+                              size="sm"
                               className="text-destructive"
                               onClick={() => void deleteContent("testimonials", testimonial.id, "Testimonial")}
                             >
                               <Trash2 size={16} />
+                              Delete
                             </Button>
                           </div>
                         </div>
@@ -3086,12 +3103,22 @@ const AdminDashboard = () => {
                                 </select>
                               </div>
                               <div className="flex items-end">
-                                <Button
-                                  variant="gold"
-                                  onClick={() => void saveConsultation(consultation.id)}
-                                >
-                                  Save Consultation
-                                </Button>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    variant="gold"
+                                    onClick={() => void saveConsultation(consultation.id)}
+                                  >
+                                    Save Consultation
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    className="gap-2 text-destructive"
+                                    onClick={() => void deleteContent("consultations", consultation.id, "Consultation")}
+                                  >
+                                    <Trash2 size={14} />
+                                    Delete
+                                  </Button>
+                                </div>
                               </div>
                             </div>
                           </motion.div>
@@ -3234,6 +3261,15 @@ const AdminDashboard = () => {
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => void toggleMessageRead(msg)}>
                             Mark as {msg.isRead ? "Unread" : "Read"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-2 text-destructive"
+                            onClick={() => void deleteContent("contact_messages", msg.id, "Message")}
+                          >
+                            <Trash2 size={14} />
+                            Delete
                           </Button>
                         </div>
                       </motion.div>
