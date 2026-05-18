@@ -34,7 +34,17 @@ const calculateTimeLeft = (eventDate: Date) => {
   };
 };
 
-const EventCard = ({ event, index, isMember }: { event: EventItem; index: number; isMember: boolean }) => {
+const EventCard = ({
+  event,
+  index,
+  isMember,
+  isLoggedIn,
+}: {
+  event: EventItem;
+  index: number;
+  isMember: boolean;
+  isLoggedIn: boolean;
+}) => {
   const eventDate = new Date(event.date);
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(eventDate));
   const seatsPercentage = event.total_seats > 0 ? (event.available_seats / event.total_seats) * 100 : 0;
@@ -156,16 +166,31 @@ const EventCard = ({ event, index, isMember }: { event: EventItem; index: number
               </>
             )}
           </div>
-          <Button variant={event.is_members_only && !isMember ? "outline" : "gold"} size="sm" className="shrink-0 min-w-[148px]" asChild>
-            <Link to={event.is_members_only && !isMember ? "/membership" : `/events/${event.id}`}>
+          <Button
+            variant={event.is_members_only && !isMember ? "outline" : "gold"}
+            size="sm"
+            className="shrink-0 min-w-[148px]"
+            asChild
+          >
+            <Link
+              to={
+                event.is_members_only && !isMember
+                  ? isLoggedIn
+                    ? "/membership"
+                    : "/auth"
+                  : isLoggedIn
+                    ? `/events/${event.id}`
+                    : "/auth"
+              }
+            >
               {event.is_members_only && !isMember ? (
                 <>
                   <Lock size={14} />
-                  Unlock
+                  {isLoggedIn ? "Upgrade to Book" : "Sign In to Upgrade"}
                 </>
               ) : (
                 <>
-                  View Details
+                  {isLoggedIn ? "Book Event" : "Sign In to Book"}
                   <ArrowRight size={14} />
                 </>
               )}
@@ -178,7 +203,7 @@ const EventCard = ({ event, index, isMember }: { event: EventItem; index: number
 };
 
 const EventsPage = () => {
-  const { isMember } = useAuth();
+  const { user, isMember } = useAuth();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("All");
@@ -278,7 +303,13 @@ const EventsPage = () => {
           ) : filteredEvents.length > 0 ? (
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {filteredEvents.map((event, index) => (
-                <EventCard key={event.id} event={event} index={index} isMember={isMember} />
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  index={index}
+                  isMember={isMember}
+                  isLoggedIn={Boolean(user)}
+                />
               ))}
             </div>
           ) : (

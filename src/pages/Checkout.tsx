@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, CreditCard, ExternalLink, Lock, ShoppingBag } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import { FunctionsHttpError } from "@supabase/supabase-js";
 const PENDING_ORDER_EXPIRY_MS = 60 * 60 * 1000;
 
 const CheckoutPage = () => {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, clearCart } = useCart();
   const { user, isMember } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,6 +31,18 @@ const CheckoutPage = () => {
     postalCode: "",
     country: "Australia",
   });
+
+  const getCheckoutItemPrice = (item: (typeof items)[number]) =>
+    (isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0;
+
+  const checkoutTotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + getCheckoutItemPrice(item) * item.quantity,
+        0,
+      ),
+    [items, isMember],
+  );
 
   useEffect(() => {
     if (!user) return;
@@ -119,7 +131,7 @@ const CheckoutPage = () => {
         .insert({
           user_id: user.id,
           status: "pending",
-          total_amount: totalPrice,
+          total_amount: checkoutTotal,
           shipping_address: `${formData.address}, ${formData.city}, ${formData.postalCode}, ${formData.country}`,
           payment_method: "stripe_test_card",
         })
@@ -133,7 +145,7 @@ const CheckoutPage = () => {
         order_id: order.id,
         book_id: item.book_id,
         quantity: item.quantity,
-        price: (isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0,
+        price: getCheckoutItemPrice(item),
       }));
 
       const { error: itemsError } = await supabase
@@ -147,7 +159,7 @@ const CheckoutPage = () => {
       const checkoutItems = items.map((item) => ({
         title: item.book?.title ?? "Book Purchase",
         quantity: item.quantity,
-        price: (isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0,
+        price: getCheckoutItemPrice(item),
       }));
 
       const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke(
@@ -414,7 +426,7 @@ const CheckoutPage = () => {
                           {item.book?.title} x{item.quantity}
                         </span>
                         <span>
-                          ${(((isMember ? item.book?.member_price ?? item.book?.price : item.book?.price) || 0) * item.quantity).toFixed(2)}
+                          ${(getCheckoutItemPrice(item) * item.quantity).toFixed(2)}
                         </span>
                       </div>
                     ))}
@@ -422,7 +434,7 @@ const CheckoutPage = () => {
                   <div className="space-y-2 mb-6 pt-4 border-t border-border">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span>${totalPrice.toFixed(2)}</span>
+                      <span>${checkoutTotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Shipping</span>
@@ -430,7 +442,7 @@ const CheckoutPage = () => {
                     </div>
                     <div className="flex justify-between text-lg font-bold pt-2">
                       <span>Total</span>
-                      <span>${totalPrice.toFixed(2)}</span>
+                      <span>${checkoutTotal.toFixed(2)}</span>
                     </div>
                   </div>
                   <Button

@@ -117,9 +117,6 @@ serve(async (req) => {
         order_id: order.id,
         user_id: user.id,
       },
-      shipping_address_collection: {
-        allowed_countries: ["AU"],
-      },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

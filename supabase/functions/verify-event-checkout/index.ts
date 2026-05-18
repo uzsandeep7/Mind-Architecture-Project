@@ -61,7 +61,7 @@ serve(async (req) => {
 
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("event_bookings")
-      .select("id, user_id, seats, status, event_id")
+      .select("id, user_id, seats, status, event_id, total_amount")
       .eq("id", bookingId)
       .single();
 
@@ -112,7 +112,7 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ bookingId: booking.id, seats: booking.seats }), {
+    return new Response(JSON.stringify({ bookingId: booking.id, seats: booking.seats, totalAmount: booking.total_amount }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

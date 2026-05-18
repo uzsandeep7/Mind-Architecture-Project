@@ -7,6 +7,10 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
   apiVersion: "2024-06-20",
 });
 
+const TAX_RATE = 0.1;
+
+const roundCurrency = (amount: number) => Math.round(amount * 100) / 100;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -89,7 +93,9 @@ serve(async (req) => {
 
     const unitPrice =
       isMember && event.member_price !== null ? Number(event.member_price) : Number(event.price);
-    const totalAmount = unitPrice * seatCount;
+    const subtotal = roundCurrency(unitPrice * seatCount);
+    const taxAmount = roundCurrency(subtotal * TAX_RATE);
+    const totalAmount = roundCurrency(subtotal + taxAmount);
 
     const { data: booking, error: bookingError } = await supabaseAdmin
       .from("event_bookings")
@@ -110,22 +116,37 @@ serve(async (req) => {
       });
     }
 
+    const lineItems = [
+      {
+        quantity: seatCount,
+        price_data: {
+          currency: "aud",
+          product_data: {
+            name: event.title,
+          },
+          unit_amount: Math.round(unitPrice * 100),
+        },
+      },
+    ];
+
+    if (taxAmount > 0) {
+      lineItems.push({
+        quantity: 1,
+        price_data: {
+          currency: "aud",
+          product_data: {
+            name: "GST (10%)",
+          },
+          unit_amount: Math.round(taxAmount * 100),
+        },
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       customer_email: user.email ?? undefined,
-      line_items: [
-        {
-          quantity: seatCount,
-          price_data: {
-            currency: "aud",
-            product_data: {
-              name: event.title,
-            },
-            unit_amount: Math.round(unitPrice * 100),
-          },
-        },
-      ],
+      line_items: lineItems,
       success_url: `${successUrl}${successUrl.includes("?") ? "&" : "?"}booking_id=${booking.id}`,
       cancel_url: `${cancelUrl}${cancelUrl.includes("?") ? "&" : "?"}booking_id=${booking.id}`,
       metadata: {

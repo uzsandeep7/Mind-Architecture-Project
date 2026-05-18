@@ -2,6 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Component, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 
@@ -29,6 +30,43 @@ import { ScrollToTop } from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
+type RouteErrorBoundaryProps = {
+  children: ReactNode;
+};
+
+type RouteErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBoundaryState> {
+  state: RouteErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Route render failed:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <main className="min-h-screen bg-background pt-32">
+          <div className="container-wide max-w-2xl text-center">
+            <h1 className="mb-4 text-3xl font-heading font-bold">Something went wrong</h1>
+            <p className="mb-6 text-muted-foreground">
+              Please refresh the page. If this continues, check the browser console for the exact error.
+            </p>
+          </div>
+        </main>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -41,26 +79,28 @@ const App = () => {
           <BrowserRouter>
             <ScrollToTop />
             <ChatWidget />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/events/:id" element={<EventDetail />} />
-              <Route path="/books" element={<Books />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/testimonials" element={<Testimonials />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/blog" element={<Blog />} />
-              <Route path="/blog/:slug" element={<BlogPost />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/gallery" element={<Gallery />} />
-              <Route path="/consultation" element={<Consultation />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/membership" element={<Membership />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <RouteErrorBoundary>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/events" element={<Events />} />
+                <Route path="/events/:id" element={<EventDetail />} />
+                <Route path="/books" element={<Books />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/testimonials" element={<Testimonials />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/gallery" element={<Gallery />} />
+                <Route path="/consultation" element={<Consultation />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/membership" element={<Membership />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </RouteErrorBoundary>
           </BrowserRouter>
         </CartProvider>
       </TooltipProvider>

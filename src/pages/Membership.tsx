@@ -26,7 +26,7 @@ import {
   Video,
 } from "lucide-react";
 import { SubscriptionCheckoutModal } from "@/components/checkout/SubscriptionCheckoutModal";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { PaymentSuccessDialog } from "@/components/checkout/PaymentSuccessDialog";
@@ -124,6 +124,7 @@ const MembershipPage = () => {
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, refreshUserContext, membershipTier } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
@@ -200,6 +201,16 @@ const MembershipPage = () => {
     }
   };
 
+  const handleUpgradeClick = () => {
+    if (!user) {
+      toast.error("Please sign in to upgrade your membership");
+      navigate("/auth");
+      return;
+    }
+
+    setShowCheckout(true);
+  };
+
   return (
     <Layout>
       {/* Header Section */}
@@ -269,7 +280,7 @@ const MembershipPage = () => {
                 className="w-full mt-8"
                 disabled
               >
-                Current Plan
+                {membershipTier === "premium" ? "Free Plan" : "Current Plan"}
               </Button>
             </motion.div>
 
@@ -312,13 +323,13 @@ const MembershipPage = () => {
               </div>
 
               <Button
-                variant="gold"
+                variant={membershipTier === "premium" ? "outline" : "gold"}
                 size="lg"
                 className="w-full"
                 onClick={
                   membershipTier === "premium"
                     ? () => void handleManageMembership()
-                    : () => setShowCheckout(true)
+                    : handleUpgradeClick
                 }
                 disabled={isOpeningPortal}
               >
@@ -326,8 +337,10 @@ const MembershipPage = () => {
                 {membershipTier === "premium"
                   ? isOpeningPortal
                     ? "Opening Membership Portal..."
-                    : "Manage Membership"
-                  : "Upgrade to Premium"}
+                    : "Current Plan"
+                  : user
+                    ? "Upgrade to Premium"
+                    : "Sign In to Upgrade"}
               </Button>
               {membershipTier === "premium" ? (
                 <p className="mt-3 text-center text-xs text-muted-foreground">
@@ -509,7 +522,7 @@ const MembershipPage = () => {
               onClick={
                 membershipTier === "premium"
                   ? () => void handleManageMembership()
-                  : () => setShowCheckout(true)
+                  : handleUpgradeClick
               }
               disabled={isOpeningPortal}
             >
@@ -518,7 +531,9 @@ const MembershipPage = () => {
                 ? isOpeningPortal
                   ? "Opening Membership Portal..."
                   : "Manage Membership"
-                : "Get Premium Access"}
+                : user
+                  ? "Get Premium Access"
+                  : "Sign In for Premium Access"}
             </Button>
           </motion.div>
         </div>

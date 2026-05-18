@@ -29,11 +29,13 @@ const BookCard = ({
   index,
   onAddToCart,
   isMember,
+  isLoggedIn,
 }: {
   book: Book;
   index: number;
   onAddToCart: (book: Book) => void;
   isMember: boolean;
+  isLoggedIn: boolean;
 }) => (
   <motion.div
     initial={{ opacity: 0, y: 30 }}
@@ -90,6 +92,13 @@ const BookCard = ({
             <Link to="/membership">
               <Lock size={14} className="mr-1" />
               Unlock
+            </Link>
+          </Button>
+        ) : !isLoggedIn ? (
+          <Button variant="outline" size="sm" className="shrink-0 min-w-[120px]" asChild>
+            <Link to="/auth">
+              <Lock size={14} className="mr-1" />
+              Sign In
             </Link>
           </Button>
         ) : (
@@ -239,7 +248,14 @@ const BooksPage = () => {
           ) : filteredBooks.length > 0 ? (
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {filteredBooks.map((book, index) => (
-                <BookCard key={book.id} book={book} index={index} onAddToCart={handleAddToCart} isMember={isMember} />
+                <BookCard
+                  key={book.id}
+                  book={book}
+                  index={index}
+                  onAddToCart={handleAddToCart}
+                  isMember={isMember}
+                  isLoggedIn={Boolean(user)}
+                />
               ))}
             </div>
           ) : (

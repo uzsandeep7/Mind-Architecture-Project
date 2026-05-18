@@ -1,4 +1,4 @@
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
@@ -37,7 +37,7 @@ const calculateTimeLeft = (eventDate: Date) => {
 };
 
 const EventDetailPage = () => {
-  const { isMember } = useAuth();
+  const { user, isMember } = useAuth();
   const { id } = useParams<{ id: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [event, setEvent] = useState<EventDetails | null>(null);
@@ -46,6 +46,7 @@ const EventDetailPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [bookingTotal, setBookingTotal] = useState<number | undefined>(undefined);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -108,8 +109,7 @@ const EventDetailPage = () => {
             }
           : prev,
       );
-      const unitPrice = isMember && event.member_price !== null ? Number(event.member_price) : Number(event.price);
-      setBookingTotal(unitPrice * Number(data.seats ?? 0) * 1.1);
+      setBookingTotal(Number(data.totalAmount ?? 0));
       setShowCheckout(false);
       setShowSuccess(true);
       setSearchParams({}, { replace: true });
@@ -118,6 +118,16 @@ const EventDetailPage = () => {
 
     void verifyEventCheckout();
   }, [event, isMember, searchParams, setSearchParams]);
+
+  const handleBookNow = () => {
+    if (!user) {
+      toast.error("Please sign in to book this event");
+      navigate("/auth");
+      return;
+    }
+
+    setShowCheckout(true);
+  };
 
   if (loading) {
     return (
@@ -258,11 +268,13 @@ const EventDetailPage = () => {
 
                   {event.is_members_only && !isMember ? (
                     <Button variant="outline" size="lg" className="mb-3 w-full" asChild>
-                      <Link to="/membership">Unlock with Premium Membership</Link>
+                      <Link to={user ? "/membership" : "/auth"}>
+                        {user ? "Unlock with Premium Membership" : "Sign In to Upgrade"}
+                      </Link>
                     </Button>
                   ) : (
-                    <Button variant="gold" size="lg" className="mb-3 w-full" onClick={() => setShowCheckout(true)}>
-                      Book Now - $
+                    <Button variant="gold" size="lg" className="mb-3 w-full" onClick={handleBookNow}>
+                      {user ? "Book Now - $" : "Sign In to Book - $"}
                       {Number(isMember && event.member_price !== null ? event.member_price : event.price).toFixed(2)}
                     </Button>
                   )}

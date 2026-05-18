@@ -33,8 +33,10 @@ import {
   Activity,
   Loader2,
   Save,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -112,9 +114,54 @@ const defaultEventCategories = [
 const toLocalDateTimeInput = (value: string | null) => {
   if (!value) return "";
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
   const offset = date.getTimezoneOffset();
   return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
 };
+
+const formatDate = (value: string | null | undefined) => {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not set" : date.toLocaleDateString();
+};
+
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not set" : date.toLocaleString();
+};
+
+type AdminSectionErrorBoundaryProps = {
+  children: ReactNode;
+  fallback: ReactNode;
+};
+
+type AdminSectionErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class AdminSectionErrorBoundary extends Component<
+  AdminSectionErrorBoundaryProps,
+  AdminSectionErrorBoundaryState
+> {
+  state: AdminSectionErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("Admin section render failed:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+
+    return this.props.children;
+  }
+}
 
 const slugify = (value: string) =>
   value
@@ -141,6 +188,13 @@ const getErrorMessage = (error: unknown) => {
 
 const buildAustraliaPostTrackingUrl = (trackingNumber: string) =>
   `https://auspost.com.au/mypost/track/search?trackingNumber=${encodeURIComponent(trackingNumber)}`;
+
+const buildReplyMailtoLink = (email: string, subject?: string) => {
+  const replySubject = subject?.trim() ? `Re: ${subject.trim()}` : "Re: Website enquiry";
+  const body = "Hi,\n\nThank you for reaching out to MIND Architecture.\n\n";
+
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(replySubject)}&body=${encodeURIComponent(body)}`;
+};
 
 const PENDING_ORDER_EXPIRY_MS = 60 * 60 * 1000;
 
@@ -187,6 +241,7 @@ const AdminDashboard = () => {
   const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
   const [membershipUpdatingId, setMembershipUpdatingId] = useState<string | null>(null);
   const [selectedOrderGroup, setSelectedOrderGroup] = useState("Pending Payment");
+  const [expandedEventBookingsId, setExpandedEventBookingsId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -356,7 +411,7 @@ const AdminDashboard = () => {
         (messagesResult.data ?? []).map((message) => ({
           ...message,
           isRead: message.is_read,
-          date: new Date(message.created_at).toLocaleDateString(),
+          date: formatDate(message.created_at),
         })),
       );
       setConsultations(consultationsResult.data ?? []);
@@ -365,7 +420,7 @@ const AdminDashboard = () => {
           (consultationsResult.data ?? []).map((consultation) => [
             consultation.id,
             {
-              date: consultation.date ? new Date(consultation.date).toISOString().slice(0, 16) : "",
+              date: toLocalDateTimeInput(consultation.date),
               status: consultation.status,
             },
           ]),
@@ -546,6 +601,17 @@ const AdminDashboard = () => {
     () => new Map(managedUsers.map((managedUser) => [managedUser.id, managedUser])),
     [managedUsers],
   );
+  const eventBookingsByEvent = useMemo(() => {
+    const bookingsMap = new Map<string, EventBookingRow[]>();
+
+    for (const booking of eventBookings) {
+      const current = bookingsMap.get(booking.event_id) ?? [];
+      current.push(booking);
+      bookingsMap.set(booking.event_id, current);
+    }
+
+    return bookingsMap;
+  }, [eventBookings]);
 
   const resetEventForm = () => {
     setEditingEventId(null);
@@ -1104,6 +1170,19 @@ const AdminDashboard = () => {
       </section>
 
       {/* Charts Section */}
+      <AdminSectionErrorBoundary
+        fallback={
+          <section className="py-8 bg-secondary/20">
+            <div className="container-wide">
+              <Card>
+                <CardContent className="p-6 text-sm text-muted-foreground">
+                  Analytics could not be displayed right now, but the admin tools below are still available.
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        }
+      >
       <section className="py-8 bg-secondary/20">
         <div className="container-wide">
           <div className="grid lg:grid-cols-2 gap-6 mb-6">
@@ -1298,8 +1377,25 @@ const AdminDashboard = () => {
           </div>
         </div>
       </section>
+      </AdminSectionErrorBoundary>
 
       {/* Dashboard Content */}
+      <AdminSectionErrorBoundary
+        fallback={
+          <section className="section-padding bg-background">
+            <div className="container-wide">
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="mb-2 font-heading text-2xl font-bold">Admin tools could not load</h2>
+                  <p className="text-sm text-muted-foreground">
+                    One admin section has invalid data or failed during rendering. Refresh the page once, and check the browser console if it continues.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        }
+      >
       <section className="section-padding bg-background">
         <div className="container-wide">
           <Tabs defaultValue="events" className="space-y-8">
@@ -1574,7 +1670,11 @@ const AdminDashboard = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {events.map((event) => (
+                    {events.map((event) => {
+                      const eventBookedUsers = eventBookingsByEvent.get(event.id) ?? [];
+                      const isBookingsExpanded = expandedEventBookingsId === event.id;
+
+                      return (
                       <motion.div
                         key={event.id}
                         initial={{ opacity: 0 }}
@@ -1590,7 +1690,7 @@ const AdminDashboard = () => {
                             {event.is_members_only ? <Badge className="bg-amber-500 text-black">Members Only</Badge> : null}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {event.date} • {event.venue}
+                            {event.date} - {event.venue}
                           </p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-sm font-medium text-primary">
@@ -1655,8 +1755,62 @@ const AdminDashboard = () => {
                             <Trash2 size={16} />
                           </Button>
                         </div>
+                        <div className="rounded-lg border border-border/70 bg-background/60">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-secondary/40"
+                            onClick={() =>
+                              setExpandedEventBookingsId((current) =>
+                                current === event.id ? null : event.id,
+                              )
+                            }
+                          >
+                            <span>
+                              View Bookings ({eventBookedUsers.length})
+                            </span>
+                            {isBookingsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+                          {isBookingsExpanded ? (
+                            <div className="space-y-2 border-t border-border px-4 py-3">
+                              {eventBookedUsers.length > 0 ? (
+                                eventBookedUsers.map((booking) => {
+                                  const bookedUser = managedUsersMap.get(booking.user_id);
+
+                                  return (
+                                    <div
+                                      key={booking.id}
+                                      className="rounded-md border border-border bg-card p-3 text-sm"
+                                    >
+                                      <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div>
+                                          <p className="font-medium">
+                                            {bookedUser?.full_name || "Unnamed user"}
+                                          </p>
+                                          <p className="break-all text-xs text-muted-foreground">
+                                            {booking.user_id}
+                                          </p>
+                                        </div>
+                                        <Badge variant="outline">{booking.status}</Badge>
+                                      </div>
+                                      <div className="mt-2 grid gap-2 text-xs text-muted-foreground md:grid-cols-3">
+                                        <span>Seats: {booking.seats}</span>
+                                        <span>Total: ${Number(booking.total_amount).toFixed(2)}</span>
+                                        <span>Booked: {formatDateTime(booking.created_at)}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  No bookings for this event yet.
+                                </p>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                     {events.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                         No events yet. Add your first event here, then manage it from this list with edit, hide, or delete.
@@ -2028,7 +2182,7 @@ const AdminDashboard = () => {
                                   {order.payment_method || "Payment method pending"}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {new Date(order.created_at).toLocaleDateString()}
+                                  {formatDate(order.created_at)}
                                 </p>
                                 {order.status === "pending" ? (
                                   <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
@@ -2251,8 +2405,8 @@ const AdminDashboard = () => {
                             <span className="flex items-center gap-1">
                               <Eye size={14} /> {post.slug}
                             </span>
-                            <span>❤️ {post.likes}</span>
-                            <span>💬 {post.comments}</span>
+                            <span>Likes: {post.likes}</span>
+                            <span>Comments: {post.comments}</span>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -2317,7 +2471,7 @@ const AdminDashboard = () => {
                       consultations.map((consultation) => {
                         const consultationUser = managedUsersMap.get(consultation.user_id);
                         const draft = consultationDrafts[consultation.id] ?? {
-                          date: consultation.date ? new Date(consultation.date).toISOString().slice(0, 16) : "",
+                          date: toLocalDateTimeInput(consultation.date),
                           status: consultation.status,
                         };
 
@@ -2343,7 +2497,7 @@ const AdminDashboard = () => {
                                   {consultation.user_id}
                                 </p>
                                 <p className="mt-2 text-sm text-muted-foreground">
-                                  Requested / scheduled: {new Date(consultation.date).toLocaleString()}
+                                  Requested / scheduled: {formatDateTime(consultation.date)}
                                 </p>
                                 {consultation.message ? (
                                   <p className="mt-2 text-sm whitespace-pre-wrap">
@@ -2352,7 +2506,7 @@ const AdminDashboard = () => {
                                 ) : null}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {new Date(consultation.created_at).toLocaleDateString()}
+                                {formatDate(consultation.created_at)}
                               </p>
                             </div>
 
@@ -2522,9 +2676,17 @@ const AdminDashboard = () => {
                           </div>
                           <p className="text-xs text-muted-foreground">{msg.date}</p>
                         </div>
-                        <Button variant="outline" size="sm" className="mt-3" onClick={() => void toggleMessageRead(msg)}>
-                          Mark as {msg.isRead ? "Unread" : "Read"}
-                        </Button>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button variant="gold" size="sm" asChild>
+                            <a href={buildReplyMailtoLink(msg.email, `Website enquiry from ${msg.name}`)}>
+                              <Mail size={14} className="mr-1" />
+                              Reply by Email
+                            </a>
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => void toggleMessageRead(msg)}>
+                            Mark as {msg.isRead ? "Unread" : "Read"}
+                          </Button>
+                        </div>
                       </motion.div>
                       ))
                     ) : (
@@ -2541,6 +2703,7 @@ const AdminDashboard = () => {
           </Tabs>
         </div>
       </section>
+      </AdminSectionErrorBoundary>
     </Layout>
   );
 };
