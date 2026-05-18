@@ -14,6 +14,7 @@ import {
   LogOut,
   Settings,
   ShoppingBag,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -28,7 +29,7 @@ interface EventBooking {
   status: string;
   total_amount: number;
   created_at: string;
-  event: { title: string; date: string; venue: string } | null;
+  event: { id: string; title: string; date: string; venue: string; description: string | null } | null;
 }
 
 interface Order {
@@ -132,7 +133,7 @@ const DashboardPage = () => {
           .maybeSingle(),
         supabase
           .from("event_bookings")
-          .select("id, seats, status, total_amount, created_at, event:events(title, date, venue)")
+          .select("id, seats, status, total_amount, created_at, event:events(id, title, date, venue, description)")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
         supabase
@@ -236,6 +237,7 @@ const DashboardPage = () => {
     setProfile((prev) => ({
       full_name: fullName.trim() || null,
       avatar_url: prev?.avatar_url ?? null,
+      membership_tier: prev?.membership_tier ?? "free",
     }));
     toast.success("Profile updated successfully");
     setIsSaving(false);
@@ -293,6 +295,35 @@ const DashboardPage = () => {
       toast.error(message);
       setRetryingOrderId(null);
     }
+  };
+
+  const deleteUserHistory = async (
+    table: "event_bookings" | "orders" | "consultations",
+    id: string,
+    label: string,
+  ) => {
+    if (!user) return;
+
+    const confirmed = window.confirm(`Delete this ${label.toLowerCase()} from your history?`);
+    if (!confirmed) return;
+
+    const { error } = await supabase.from(table).delete().eq("id", id).eq("user_id", user.id);
+
+    if (error) {
+      console.error(`Failed to delete ${label}:`, error);
+      toast.error(`Failed to delete ${label.toLowerCase()}`);
+      return;
+    }
+
+    if (table === "event_bookings") {
+      setEventBookings((current) => current.filter((item) => item.id !== id));
+    } else if (table === "orders") {
+      setOrders((current) => current.filter((item) => item.id !== id));
+    } else {
+      setConsultations((current) => current.filter((item) => item.id !== id));
+    }
+
+    toast.success(`${label} deleted`);
   };
 
   if (isLoading) {
@@ -423,11 +454,37 @@ const DashboardPage = () => {
                             <p className="text-sm text-white/70 mt-1">
                               {booking.event?.date &&
                                 format(new Date(booking.event.date), "PPP")}{" "}
-                              • {booking.event?.venue}
+                              - {booking.event?.venue}
                             </p>
                             <p className="text-sm text-white/70 mt-1">
-                              {booking.seats} seat(s) • ${booking.total_amount}
+                              {booking.seats} seat(s) - ${booking.total_amount}
                             </p>
+                            {booking.event?.description ? (
+                              <p className="mt-2 line-clamp-3 text-sm text-white/65">
+                                {booking.event.description}
+                              </p>
+                            ) : null}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {booking.event?.id ? (
+                                <Button
+                                  variant="goldOutline"
+                                  size="sm"
+                                  className="h-8 px-3"
+                                  onClick={() => navigate(`/events/${booking.event?.id}`)}
+                                >
+                                  View Event Details
+                                </Button>
+                              ) : null}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-2 px-3 text-destructive"
+                                onClick={() => void deleteUserHistory("event_bookings", booking.id, "Event booking")}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </Button>
+                            </div>
                           </div>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
@@ -521,6 +578,15 @@ const DashboardPage = () => {
                                 </Button>
                               </div>
                             ) : null}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mt-3 h-8 gap-2 px-3 text-destructive"
+                              onClick={() => void deleteUserHistory("orders", order.id, "Order")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete Order
+                            </Button>
                           </div>
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
@@ -607,6 +673,15 @@ const DashboardPage = () => {
                               {consultation.message}
                             </p>
                           ) : null}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 px-3 text-destructive"
+                            onClick={() => void deleteUserHistory("consultations", consultation.id, "Consultation")}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>

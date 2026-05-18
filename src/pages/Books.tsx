@@ -1,7 +1,8 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Star, Filter, Search, Crown, Lock } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ShoppingCart, Star, Filter, Search, Crown, Lock, Eye } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -28,12 +29,14 @@ const BookCard = ({
   book,
   index,
   onAddToCart,
+  onViewDetails,
   isMember,
   isLoggedIn,
 }: {
   book: Book;
   index: number;
   onAddToCart: (book: Book) => void;
+  onViewDetails: (book: Book) => void;
   isMember: boolean;
   isLoggedIn: boolean;
 }) => (
@@ -68,7 +71,8 @@ const BookCard = ({
       <p className="mb-3 text-sm text-muted-foreground">{book.subtitle}</p>
       <p className="mb-4 min-h-[3.5rem] line-clamp-2 text-sm text-muted-foreground">{book.description}</p>
 
-      <div className="mt-auto flex items-end justify-between gap-4 border-t border-border pt-4">
+      <div className="mt-auto space-y-4 border-t border-border pt-4">
+        <div className="flex items-end justify-between gap-4">
         <div className="min-w-0 flex-1">
           {isMember && book.memberPrice < book.price ? (
             <>
@@ -107,6 +111,11 @@ const BookCard = ({
             Add to Cart
           </Button>
         )}
+        </div>
+        <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => onViewDetails(book)}>
+          <Eye size={14} />
+          View Details
+        </Button>
       </div>
     </div>
   </motion.div>
@@ -118,6 +127,7 @@ const BooksPage = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [books, setBooks] = useState<Book[]>([]);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [isLoadingBooks, setIsLoadingBooks] = useState(true);
   const navigate = useNavigate();
 
@@ -253,6 +263,7 @@ const BooksPage = () => {
                   book={book}
                   index={index}
                   onAddToCart={handleAddToCart}
+                  onViewDetails={setSelectedBook}
                   isMember={isMember}
                   isLoggedIn={Boolean(user)}
                 />
@@ -265,6 +276,57 @@ const BooksPage = () => {
           )}
         </div>
       </section>
+
+      <Dialog open={Boolean(selectedBook)} onOpenChange={() => setSelectedBook(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
+          {selectedBook ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-heading text-2xl">{selectedBook.title}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-6 md:grid-cols-[220px,1fr]">
+                <img
+                  src={selectedBook.coverUrl}
+                  alt={selectedBook.title}
+                  className="h-72 w-full rounded-xl object-cover"
+                />
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium uppercase tracking-widest text-primary">
+                      {selectedBook.category}
+                    </p>
+                    <p className="mt-2 text-muted-foreground">{selectedBook.subtitle}</p>
+                  </div>
+                  <p className="whitespace-pre-wrap leading-relaxed text-foreground/85">
+                    {selectedBook.description}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <p className="text-2xl font-heading font-bold text-primary">
+                      ${(isMember ? selectedBook.memberPrice : selectedBook.price).toFixed(2)}
+                    </p>
+                    {selectedBook.memberPrice < selectedBook.price ? (
+                      <p className="text-sm text-muted-foreground">
+                        Standard price ${selectedBook.price.toFixed(2)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    variant="gold"
+                    className="w-full"
+                    onClick={() => {
+                      void handleAddToCart(selectedBook);
+                      setSelectedBook(null);
+                    }}
+                  >
+                    <ShoppingCart size={16} />
+                    Add to Cart
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
