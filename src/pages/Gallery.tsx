@@ -11,15 +11,10 @@ interface GalleryItem {
   title?: string | null;
 }
 
-const fallbackGalleryImages: GalleryItem[] = Array.from({ length: 7 }, (_, i) => ({
-  id: String(i + 1),
-  image_url: `/gallery${i + 1}.jpg`,
-  title: `Gallery image ${i + 1}`,
-}));
-
 const GalleryPage = () => {
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
-  const [galleryImages, setGalleryImages] = useState<GalleryItem[]>(fallbackGalleryImages);
+  const [galleryImages, setGalleryImages] = useState<GalleryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadGallery = async () => {
@@ -29,9 +24,10 @@ const GalleryPage = () => {
         .eq("is_published", true)
         .order("display_order", { ascending: true });
 
-      if (!error && data && data.length > 0) {
-        setGalleryImages(data);
+      if (!error) {
+        setGalleryImages(data ?? []);
       }
+      setIsLoading(false);
     };
 
     void loadGallery();
@@ -62,29 +58,39 @@ const GalleryPage = () => {
 
       <section className="section-padding bg-background">
         <div className="container-wide">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {galleryImages.map((image, index) => (
-              <motion.div
-                key={image.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="cursor-pointer"
-                onClick={() => setSelectedImage(image)}
-              >
-                <div className="group relative aspect-[4/3] overflow-hidden rounded-xl shadow-soft">
-                  <img
-                    src={image.image_url}
-                    alt={image.title || "Gallery image"}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
+          {isLoading ? (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">
+              Loading gallery...
+            </div>
+          ) : galleryImages.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {galleryImages.map((image, index) => (
+                <motion.div
+                  key={image.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="cursor-pointer"
+                  onClick={() => setSelectedImage(image)}
+                >
+                  <div className="group relative aspect-[4/3] overflow-hidden rounded-xl shadow-soft">
+                    <img
+                      src={image.image_url}
+                      alt={image.title || "Gallery image"}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
 
-                  <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/30" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                    <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/30" />
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-border p-8 text-center text-muted-foreground">
+              No gallery photos have been published yet. Add photos from the admin dashboard to show them here.
+            </div>
+          )}
         </div>
       </section>
 
