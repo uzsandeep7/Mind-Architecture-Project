@@ -36,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   Star,
+  Image,
 } from "lucide-react";
 import { Component, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -69,6 +70,7 @@ type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
 type EventBookingRow = Database["public"]["Tables"]["event_bookings"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type TestimonialRow = Database["public"]["Tables"]["testimonials"]["Row"];
+type GalleryRow = Database["public"]["Tables"]["gallery"]["Row"];
 
 type OrderItemWithBook = {
   quantity: number;
@@ -226,6 +228,7 @@ const AdminDashboard = () => {
   const [orderItems, setOrderItems] = useState<OrderItemWithBook[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [testimonials, setTestimonials] = useState<TestimonialRow[]>([]);
+  const [galleryItems, setGalleryItems] = useState<GalleryRow[]>([]);
   const [messageFilter, setMessageFilter] = useState<"unread" | "all">("unread");
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [consultations, setConsultations] = useState<ConsultationRow[]>([]);
@@ -238,16 +241,19 @@ const AdminDashboard = () => {
   const [isBookDialogOpen, setIsBookDialogOpen] = useState(false);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
   const [isTestimonialDialogOpen, setIsTestimonialDialogOpen] = useState(false);
+  const [isGalleryDialogOpen, setIsGalleryDialogOpen] = useState(false);
   const [isSavingEvent, setIsSavingEvent] = useState(false);
   const [isSavingBook, setIsSavingBook] = useState(false);
   const [isSavingPost, setIsSavingPost] = useState(false);
   const [isSavingTestimonial, setIsSavingTestimonial] = useState(false);
+  const [isSavingGalleryItem, setIsSavingGalleryItem] = useState(false);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
   const [membershipUpdatingId, setMembershipUpdatingId] = useState<string | null>(null);
   const [selectedOrderGroup, setSelectedOrderGroup] = useState("Pending Payment");
   const [expandedEventBookingsId, setExpandedEventBookingsId] = useState<string | null>(null);
   const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null);
+  const [editingGalleryItemId, setEditingGalleryItemId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -295,6 +301,13 @@ const AdminDashboard = () => {
     display_order: "0",
     is_published: true,
   });
+  const [newGalleryItem, setNewGalleryItem] = useState({
+    title: "",
+    category: "",
+    image_url: "",
+    display_order: "0",
+    is_published: true,
+  });
 
   useEffect(() => {
     if (!isLoading && user && isAdmin) {
@@ -327,6 +340,7 @@ const AdminDashboard = () => {
         orderItemsResult,
         messagesResult,
         testimonialsResult,
+        galleryResult,
         consultationsResult,
         profilesResult,
         rolesResult,
@@ -341,6 +355,7 @@ const AdminDashboard = () => {
         supabase.from("order_items").select("quantity, price, book:books(title)"),
         supabase.from("contact_messages").select("*").order("created_at", { ascending: false }),
         supabase.from("testimonials").select("*").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
+        supabase.from("gallery").select("*").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
         supabase.from("consultations").select("*").order("created_at", { ascending: false }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*"),
@@ -352,6 +367,7 @@ const AdminDashboard = () => {
         blogPostsResult,
         ordersResult,
         messagesResult,
+        galleryResult,
         consultationsResult,
         profilesResult,
         rolesResult,
@@ -377,6 +393,10 @@ const AdminDashboard = () => {
 
       if (testimonialsResult.error) {
         console.warn("Failed to load testimonials. Apply the testimonials migration in Supabase.", testimonialsResult.error);
+      }
+
+      if (galleryResult.error) {
+        console.warn("Failed to load gallery items for admin.", galleryResult.error);
       }
 
       setEvents(
@@ -437,6 +457,7 @@ const AdminDashboard = () => {
         })),
       );
       setTestimonials(testimonialsResult.error ? [] : testimonialsResult.data ?? []);
+      setGalleryItems(galleryResult.error ? [] : galleryResult.data ?? []);
       setConsultations(consultationsResult.data ?? []);
       setConsultationDrafts(
         Object.fromEntries(
@@ -703,6 +724,18 @@ const AdminDashboard = () => {
     });
   };
 
+  const resetGalleryItemForm = () => {
+    setEditingGalleryItemId(null);
+    setIsGalleryDialogOpen(false);
+    setNewGalleryItem({
+      title: "",
+      category: "",
+      image_url: "",
+      display_order: "0",
+      is_published: true,
+    });
+  };
+
   const adminAssetBucket = "admin-assets";
 
   const sanitizeFileName = (fileName: string) =>
@@ -920,8 +953,42 @@ const AdminDashboard = () => {
     }
   };
 
+  const saveGalleryItem = async () => {
+    if (!newGalleryItem.image_url.trim()) {
+      toast.error("Please upload or paste a gallery image first");
+      return;
+    }
+
+    setIsSavingGalleryItem(true);
+    try {
+      const payload = {
+        title: newGalleryItem.title.trim() || null,
+        category: newGalleryItem.category.trim() || null,
+        image_url: newGalleryItem.image_url.trim(),
+        display_order: Number(newGalleryItem.display_order) || 0,
+        is_published: newGalleryItem.is_published,
+      };
+
+      const query = editingGalleryItemId
+        ? supabase.from("gallery").update(payload).eq("id", editingGalleryItemId)
+        : supabase.from("gallery").insert(payload);
+
+      const { error } = await query;
+      if (error) throw error;
+
+      toast.success(editingGalleryItemId ? "Gallery photo updated" : "Gallery photo added");
+      resetGalleryItemForm();
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to save gallery photo:", error);
+      toast.error(getErrorMessage(error) || "Failed to save gallery photo");
+    } finally {
+      setIsSavingGalleryItem(false);
+    }
+  };
+
   const toggleVisibility = async (
-    table: "events" | "books" | "blog_posts" | "testimonials",
+    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery",
     row: { id: string; is_published: boolean | null },
   ) => {
     try {
@@ -945,7 +1012,7 @@ const AdminDashboard = () => {
   };
 
   const deleteContent = async (
-    table: "events" | "books" | "blog_posts" | "testimonials",
+    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery",
     id: string,
     label: string,
   ) => {
@@ -1494,6 +1561,10 @@ const AdminDashboard = () => {
               <TabsTrigger value="testimonials">
                 <Star className="w-4 h-4 mr-1" />
                 Testimonials
+              </TabsTrigger>
+              <TabsTrigger value="gallery">
+                <Image className="w-4 h-4 mr-1" />
+                Gallery
               </TabsTrigger>
               <TabsTrigger value="users">
                 <Users className="w-4 h-4 mr-1" />
@@ -2745,6 +2816,194 @@ const AdminDashboard = () => {
                       </div>
                     ) : null}
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Gallery Tab */}
+            <TabsContent value="gallery">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Manage Gallery</CardTitle>
+                  <Dialog
+                    open={isGalleryDialogOpen}
+                    onOpenChange={(open) => {
+                      setIsGalleryDialogOpen(open);
+                      if (!open) resetGalleryItemForm();
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="gold"
+                        size="sm"
+                        onClick={() => {
+                          setEditingGalleryItemId(null);
+                          setIsGalleryDialogOpen(true);
+                        }}
+                      >
+                        <Plus size={16} className="mr-1" /> Add Photo
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>{editingGalleryItemId ? "Edit Gallery Photo" : "Add Gallery Photo"}</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 pr-1">
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label>Title</Label>
+                            <Input
+                              value={newGalleryItem.title}
+                              onChange={(e) => setNewGalleryItem((p) => ({ ...p, title: e.target.value }))}
+                              placeholder="Workshop moment"
+                            />
+                          </div>
+                          <div>
+                            <Label>Category</Label>
+                            <Input
+                              value={newGalleryItem.category}
+                              onChange={(e) => setNewGalleryItem((p) => ({ ...p, category: e.target.value }))}
+                              placeholder="Workshop, Event, Speaking"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label>Image URL</Label>
+                          <Input
+                            value={newGalleryItem.image_url}
+                            onChange={(e) => setNewGalleryItem((p) => ({ ...p, image_url: e.target.value }))}
+                            placeholder="Paste image URL or upload below"
+                          />
+                        </div>
+                        <div>
+                          <Label>Upload photo from computer</Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) =>
+                              void handleImageUpload(
+                                "gallery-image",
+                                e.target.files?.[0] ?? null,
+                                (value) => setNewGalleryItem((p) => ({ ...p, image_url: value })),
+                              )
+                            }
+                          />
+                        </div>
+                        {newGalleryItem.image_url ? (
+                          <img
+                            src={newGalleryItem.image_url}
+                            alt="Gallery preview"
+                            className="h-40 w-full rounded-md border border-border object-cover"
+                          />
+                        ) : null}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div>
+                            <Label>Display Order</Label>
+                            <Input
+                              type="number"
+                              value={newGalleryItem.display_order}
+                              onChange={(e) => setNewGalleryItem((p) => ({ ...p, display_order: e.target.value }))}
+                            />
+                          </div>
+                          <label className="flex items-end gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={newGalleryItem.is_published}
+                              onChange={(e) => setNewGalleryItem((p) => ({ ...p, is_published: e.target.checked }))}
+                            />
+                            Published
+                          </label>
+                        </div>
+                        <div className="flex gap-3">
+                          <Button
+                            variant="gold"
+                            className="w-full"
+                            onClick={() => void saveGalleryItem()}
+                            disabled={isSavingGalleryItem || uploadingField === "gallery-image"}
+                          >
+                            {isSavingGalleryItem || uploadingField === "gallery-image" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            {editingGalleryItemId ? "Save Photo" : "Add Photo"}
+                          </Button>
+                          {editingGalleryItemId ? (
+                            <Button variant="outline" className="w-full" onClick={resetGalleryItemForm}>
+                              Cancel
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+                <CardContent>
+                  {galleryItems.length > 0 ? (
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {galleryItems.map((item) => (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="overflow-hidden rounded-xl border border-border bg-card"
+                        >
+                          <div className="aspect-[4/3] bg-secondary">
+                            <img
+                              src={item.image_url}
+                              alt={item.title || "Gallery photo"}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <div className="space-y-3 p-4">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h4 className="line-clamp-1 font-medium">{item.title || "Untitled photo"}</h4>
+                                {!item.is_published ? <Badge variant="secondary">Draft</Badge> : null}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {item.category || "No category"} - Order {item.display_order ?? 0}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setEditingGalleryItemId(item.id);
+                                  setIsGalleryDialogOpen(true);
+                                  setNewGalleryItem({
+                                    title: item.title ?? "",
+                                    category: item.category ?? "",
+                                    image_url: item.image_url,
+                                    display_order: String(item.display_order ?? 0),
+                                    is_published: Boolean(item.is_published),
+                                  });
+                                }}
+                              >
+                                <Image size={16} />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => void toggleVisibility("gallery", item)}
+                              >
+                                {item.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => void deleteContent("gallery", item.id, "Gallery photo")}
+                              >
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                      No gallery photos yet. Add photos here and they will appear on the public Gallery page.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

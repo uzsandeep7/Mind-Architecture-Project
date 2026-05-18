@@ -62,22 +62,22 @@ const GalleryPage = () => {
 
       <section className="section-padding bg-background">
         <div className="container-wide">
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {galleryImages.map((image, index) => (
               <motion.div
                 key={image.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="mb-4 break-inside-avoid cursor-pointer"
+                className="cursor-pointer"
                 onClick={() => setSelectedImage(image)}
               >
-                <div className="relative overflow-hidden rounded-xl shadow-soft group">
+                <div className="group relative aspect-[4/3] overflow-hidden rounded-xl shadow-soft">
                   <img
                     src={image.image_url}
                     alt={image.title || "Gallery image"}
                     loading="lazy"
-                    className="h-auto w-full transition-transform duration-500 group-hover:scale-105"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
 
                   <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/30" />
