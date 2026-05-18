@@ -92,7 +92,7 @@ export const Navbar = () => {
             </Link>
 
             {/* NAV LINKS */}
-            <div className="hidden lg:flex items-center gap-3 xl:gap-5 ml-5 xl:ml-8 min-w-0">
+            <div className="hidden lg:flex items-center gap-2.5 xl:gap-4 ml-4 xl:ml-6 min-w-0">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -114,25 +114,19 @@ export const Navbar = () => {
               {/* ICON GROUP — clean spacing */}
               <div className="flex items-center gap-1.5 xl:gap-2.5">
                 {user ? (
-                  <div className="hidden 2xl:flex flex-col items-end text-right mr-1 max-w-[140px]">
-                    {membershipTier === "premium" ? (
-                      <>
-                        <span className="inline-flex max-w-full items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300 shadow-sm shadow-amber-500/10">
-                          <Crown className="h-3 w-3 fill-current" />
-                          <span className="truncate">Hi, {displayName}</span>
-                        </span>
-                        <span className="mt-1 text-[11px] font-medium uppercase tracking-wide text-amber-300">
-                          Premium Member
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-xs text-white/60">Hi, {displayName}</span>
-                        <span className="text-[11px] font-medium uppercase tracking-wide text-primary">
-                          Free Member
-                        </span>
-                      </>
-                    )}
+                  <div className="hidden min-[1450px]:flex items-center mr-1 max-w-[128px]">
+                    <span
+                      className={`inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
+                        membershipTier === "premium"
+                          ? "border border-amber-400/40 bg-amber-500/10 text-amber-300 shadow-amber-500/10"
+                          : "border border-white/10 bg-white/5 text-white/75"
+                      }`}
+                    >
+                      {membershipTier === "premium" ? (
+                        <Crown className="h-3 w-3 shrink-0 fill-current" />
+                      ) : null}
+                      <span className="truncate">Hi, {displayName}</span>
+                    </span>
                   </div>
                 ) : null}
 
