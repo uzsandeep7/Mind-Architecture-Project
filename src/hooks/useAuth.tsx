@@ -7,11 +7,18 @@ type AppRole = Database["public"]["Enums"]["app_role"];
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export const useAuth = () => {
+  const getCachedRole = () => {
+    if (typeof window === "undefined") return null;
+    const cachedRole = window.localStorage.getItem("mind_architecture_role");
+    return ["owner", "admin", "moderator", "user"].includes(cachedRole ?? "") ? (cachedRole as AppRole) : null;
+  };
+
+  const cachedRole = getCachedRole();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [role, setRole] = useState<AppRole | null>(null);
+  const [isAdmin, setIsAdmin] = useState(cachedRole === "owner" || cachedRole === "admin");
+  const [role, setRole] = useState<AppRole | null>(cachedRole);
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
@@ -29,6 +36,7 @@ export const useAuth = () => {
           setIsAdmin(false);
           setRole(null);
           setProfile(null);
+          window.localStorage.removeItem("mind_architecture_role");
         }
       }
     );
@@ -80,11 +88,17 @@ export const useAuth = () => {
       setRole(resolvedRole);
       setIsAdmin(resolvedRole === "owner" || resolvedRole === "admin");
       setProfile(profileResult.data ?? null);
+      if (resolvedRole) {
+        window.localStorage.setItem("mind_architecture_role", resolvedRole);
+      } else {
+        window.localStorage.removeItem("mind_architecture_role");
+      }
     } catch (error) {
       console.error("Error checking user role:", error);
       setIsAdmin(false);
       setRole(null);
       setProfile(null);
+      window.localStorage.removeItem("mind_architecture_role");
     }
   };
 

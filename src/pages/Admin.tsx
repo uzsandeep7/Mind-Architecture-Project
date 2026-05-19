@@ -360,7 +360,6 @@ const AdminDashboard = () => {
         eventsResult,
         booksResult,
         blogPostsResult,
-        blogLikesResult,
         blogCommentsResult,
         ordersResult,
         eventBookingsResult,
@@ -378,7 +377,6 @@ const AdminDashboard = () => {
         supabase.from("events").select("*").order("date", { ascending: false }),
         supabase.from("books").select("*").order("created_at", { ascending: false }),
         supabase.from("blog_posts").select("*").order("updated_at", { ascending: false }),
-        supabase.from("blog_likes").select("post_id"),
         supabase.from("blog_comments").select("post_id"),
         supabase.from("orders").select("*").order("created_at", { ascending: false }),
         supabase.from("event_bookings").select("*").order("created_at", { ascending: false }),
@@ -406,10 +404,6 @@ const AdminDashboard = () => {
         rolesResult,
       ]) {
         if (result.error) throw result.error;
-      }
-
-      if (blogLikesResult.error) {
-        console.warn("Failed to load blog likes for admin analytics:", blogLikesResult.error);
       }
 
       if (blogCommentsResult.error) {
@@ -459,10 +453,6 @@ const AdminDashboard = () => {
           sold: 0,
         })),
       );
-      const likesByPost = new Map<string, number>();
-      for (const like of blogLikesResult.data ?? []) {
-        likesByPost.set(like.post_id, (likesByPost.get(like.post_id) ?? 0) + 1);
-      }
       const commentsByPost = new Map<string, number>();
       for (const comment of blogCommentsResult.data ?? []) {
         commentsByPost.set(comment.post_id, (commentsByPost.get(comment.post_id) ?? 0) + 1);
@@ -471,7 +461,6 @@ const AdminDashboard = () => {
         (blogPostsResult.data ?? []).map((post) => ({
           ...post,
           isPublished: post.is_published,
-          likes: likesByPost.get(post.id) ?? 0,
           comments: commentsByPost.get(post.id) ?? 0,
         })),
       );
@@ -2814,7 +2803,6 @@ const AdminDashboard = () => {
                             <span className="flex items-center gap-1">
                               <Eye size={14} /> {post.slug}
                             </span>
-                            <span>Likes: {post.likes}</span>
                             <span>Comments: {post.comments}</span>
                           </div>
                         </div>

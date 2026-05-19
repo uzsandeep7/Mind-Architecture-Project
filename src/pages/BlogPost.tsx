@@ -95,7 +95,7 @@ const BlogPostPage = () => {
   }, [slug]);
 
   const fetchComments = async (postId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("blog_comments")
       .select(`
         id,
@@ -107,12 +107,18 @@ const BlogPostPage = () => {
       .eq("post_id", postId)
       .order("created_at", { ascending: false });
 
-    if (data) {
-      setComments(data.map(c => ({
-        ...c,
-        profile: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles
-      })));
+    if (error) {
+      console.error("Failed to load blog comments:", error);
+      setComments([]);
+      return;
     }
+
+    setComments(
+      (data ?? []).map((comment) => ({
+        ...comment,
+        profile: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles,
+      })),
+    );
   };
 
   const handleComment = async () => {
@@ -152,10 +158,7 @@ const BlogPostPage = () => {
       return;
     }
 
-    // Clear input field
     setNewComment("");
-
-    // Reload comments from Supabase
     await fetchComments(post.id);
 
     toast({
