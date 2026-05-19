@@ -98,23 +98,21 @@ serve(async (req) => {
     let checkoutItems = Array.isArray(items) ? items : [];
 
     if (checkoutItems.length === 0) {
-      const { data: orderItems, error: orderItemsError } = await supabaseAdmin
-        .from("order_items")
-        .select("quantity, price, book:books(title)")
-        .eq("order_id", order.id);
-
-      if (orderItemsError) {
-        return new Response(JSON.stringify({ error: orderItemsError.message }), {
+      const orderTotal = Number(order.total_amount);
+      if (!Number.isFinite(orderTotal) || orderTotal <= 0) {
+        return new Response(JSON.stringify({ error: "Order total is invalid" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      checkoutItems = (orderItems ?? []).map((item) => ({
-        title: item.book?.title ?? "Book Purchase",
-        quantity: item.quantity,
-        price: item.price,
-      }));
+      checkoutItems = [
+        {
+          title: `Order #${String(order.id).slice(0, 8).toUpperCase()}`,
+          quantity: 1,
+          price: orderTotal,
+        },
+      ];
     }
 
     const lineItems =

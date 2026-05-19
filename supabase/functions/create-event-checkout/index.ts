@@ -143,6 +143,7 @@ serve(async (req) => {
     const subtotal = roundCurrency(unitPrice * resolvedSeatCount);
     const taxAmount = roundCurrency(subtotal * TAX_RATE);
     const totalAmount = roundCurrency(subtotal + taxAmount);
+    const checkoutTotal = existingBooking ? Number(existingBooking.total_amount) : totalAmount;
 
     let booking = existingBooking ? { id: existingBooking.id } : null;
 
@@ -169,31 +170,52 @@ serve(async (req) => {
       booking = createdBooking;
     }
 
-    const lineItems = [
-      {
-        quantity: resolvedSeatCount,
-        price_data: {
-          currency: "aud",
-          product_data: {
-            name: event.title,
-          },
-          unit_amount: Math.round(unitPrice * 100),
-        },
-      },
-    ];
-
-    if (taxAmount > 0) {
-      lineItems.push({
-        quantity: 1,
-        price_data: {
-          currency: "aud",
-          product_data: {
-            name: "GST (10%)",
-          },
-          unit_amount: Math.round(taxAmount * 100),
-        },
+    if (!Number.isFinite(checkoutTotal) || checkoutTotal <= 0) {
+      return new Response(JSON.stringify({ error: "Booking total is invalid" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const lineItems = existingBooking
+      ? [
+          {
+            quantity: 1,
+            price_data: {
+              currency: "aud",
+              product_data: {
+                name: `${event.title} booking`,
+              },
+              unit_amount: Math.round(checkoutTotal * 100),
+            },
+          },
+        ]
+      : [
+          {
+            quantity: resolvedSeatCount,
+            price_data: {
+              currency: "aud",
+              product_data: {
+                name: event.title,
+              },
+              unit_amount: Math.round(unitPrice * 100),
+            },
+          },
+          ...(taxAmount > 0
+            ? [
+                {
+                  quantity: 1,
+                  price_data: {
+                    currency: "aud",
+                    product_data: {
+                      name: "GST (10%)",
+                    },
+                    unit_amount: Math.round(taxAmount * 100),
+                  },
+                },
+              ]
+            : []),
+        ];
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
