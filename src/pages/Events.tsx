@@ -254,11 +254,11 @@ const EventsPage = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
             <span className="text-sm font-medium uppercase tracking-widest text-primary">Live Events</span>
             <h1 className="mb-6 mt-4 text-4xl font-heading font-bold md:text-5xl lg:text-6xl">
-              Transform Your Life
-              <span className="text-gradient-gold"> In Person</span>
+              Explore Upcoming
+              <span className="text-gradient-gold"> MIND Architecture Events</span>
             </h1>
             <p className="text-lg text-cream/70">
-              Browse upcoming Mind Architecture events powered directly from the live backend.
+              Explore upcoming MIND Architecture events and programs loaded live from the backend.
             </p>
           </motion.div>
         </div>
