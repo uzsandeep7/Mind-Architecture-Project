@@ -71,6 +71,8 @@ type EventBookingRow = Database["public"]["Tables"]["event_bookings"]["Row"];
 type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type TestimonialRow = Database["public"]["Tables"]["testimonials"]["Row"];
 type GalleryRow = Database["public"]["Tables"]["gallery"]["Row"];
+type ConsultationServiceRow = Database["public"]["Tables"]["consultation_services"]["Row"];
+type ConsultationTimeBlockRow = Database["public"]["Tables"]["consultation_time_blocks"]["Row"];
 
 type OrderItemWithBook = {
   quantity: number;
@@ -232,6 +234,8 @@ const AdminDashboard = () => {
   const [messageFilter, setMessageFilter] = useState<"unread" | "all">("unread");
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [consultations, setConsultations] = useState<ConsultationRow[]>([]);
+  const [consultationServices, setConsultationServices] = useState<ConsultationServiceRow[]>([]);
+  const [consultationTimeBlocks, setConsultationTimeBlocks] = useState<ConsultationTimeBlockRow[]>([]);
   const [consultationDrafts, setConsultationDrafts] = useState<Record<string, { date: string; status: string }>>({});
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, { trackingNumber: string; carrier: string }>>({});
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -254,6 +258,21 @@ const AdminDashboard = () => {
   const [expandedEventBookingsId, setExpandedEventBookingsId] = useState<string | null>(null);
   const [editingTestimonialId, setEditingTestimonialId] = useState<string | null>(null);
   const [editingGalleryItemId, setEditingGalleryItemId] = useState<string | null>(null);
+  const [newConsultationService, setNewConsultationService] = useState({
+    slug: "",
+    title: "",
+    description: "",
+    duration_minutes: "30",
+    price: "0",
+    display_order: "0",
+    is_published: true,
+  });
+  const [newConsultationTimeBlock, setNewConsultationTimeBlock] = useState({
+    label: "",
+    time_value: "",
+    display_order: "0",
+    is_published: true,
+  });
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -342,6 +361,8 @@ const AdminDashboard = () => {
         testimonialsResult,
         galleryResult,
         consultationsResult,
+        consultationServicesResult,
+        consultationTimeBlocksResult,
         profilesResult,
         rolesResult,
       ] = await Promise.all([
@@ -357,6 +378,8 @@ const AdminDashboard = () => {
         supabase.from("testimonials").select("*").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
         supabase.from("gallery").select("*").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
         supabase.from("consultations").select("*").order("created_at", { ascending: false }),
+        supabase.from("consultation_services").select("*").order("display_order", { ascending: true }),
+        supabase.from("consultation_time_blocks").select("*").order("display_order", { ascending: true }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*"),
       ]);
@@ -397,6 +420,14 @@ const AdminDashboard = () => {
 
       if (galleryResult.error) {
         console.warn("Failed to load gallery items for admin.", galleryResult.error);
+      }
+
+      if (consultationServicesResult.error) {
+        console.warn("Failed to load consultation services. Apply the consultation setup migration in Supabase.", consultationServicesResult.error);
+      }
+
+      if (consultationTimeBlocksResult.error) {
+        console.warn("Failed to load consultation time blocks. Apply the consultation setup migration in Supabase.", consultationTimeBlocksResult.error);
       }
 
       setEvents(
@@ -459,6 +490,8 @@ const AdminDashboard = () => {
       setTestimonials(testimonialsResult.error ? [] : testimonialsResult.data ?? []);
       setGalleryItems(galleryResult.error ? [] : galleryResult.data ?? []);
       setConsultations(consultationsResult.data ?? []);
+      setConsultationServices(consultationServicesResult.error ? [] : consultationServicesResult.data ?? []);
+      setConsultationTimeBlocks(consultationTimeBlocksResult.error ? [] : consultationTimeBlocksResult.data ?? []);
       setConsultationDrafts(
         Object.fromEntries(
           (consultationsResult.data ?? []).map((consultation) => [
@@ -1012,7 +1045,7 @@ const AdminDashboard = () => {
   };
 
   const deleteContent = async (
-    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery" | "orders" | "consultations" | "contact_messages",
+    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery" | "orders" | "consultations" | "contact_messages" | "consultation_services" | "consultation_time_blocks",
     id: string,
     label: string,
   ) => {
@@ -1083,6 +1116,113 @@ const AdminDashboard = () => {
       console.error("Failed to update consultation:", error);
       toast.error("Failed to update consultation");
     }
+  };
+
+  const saveConsultationService = async () => {
+    if (!newConsultationService.title.trim() || !newConsultationService.slug.trim()) {
+      toast.error("Please add a service title and slug.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("consultation_services").insert({
+        slug: slugify(newConsultationService.slug),
+        title: newConsultationService.title.trim(),
+        description: newConsultationService.description.trim() || "Consultation service",
+        duration_minutes: Number(newConsultationService.duration_minutes) || 30,
+        price: Number(newConsultationService.price) || 0,
+        display_order: Number(newConsultationService.display_order) || 0,
+        is_published: newConsultationService.is_published,
+      });
+
+      if (error) throw error;
+
+      toast.success("Consultation service added");
+      setNewConsultationService({
+        slug: "",
+        title: "",
+        description: "",
+        duration_minutes: "30",
+        price: "0",
+        display_order: "0",
+        is_published: true,
+      });
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to save consultation service:", error);
+      toast.error(getErrorMessage(error) || "Failed to save consultation service");
+    }
+  };
+
+  const updateConsultationService = async (
+    service: ConsultationServiceRow,
+    field: "title" | "description" | "duration_minutes" | "price" | "display_order" | "is_published",
+    value: string | boolean,
+  ) => {
+    const numericFields = ["duration_minutes", "price", "display_order"];
+    const nextValue = numericFields.includes(field) ? Number(value) || 0 : value;
+
+    const { error } = await supabase
+      .from("consultation_services")
+      .update({ [field]: nextValue })
+      .eq("id", service.id);
+
+    if (error) {
+      toast.error("Failed to update consultation service");
+      return;
+    }
+
+    await loadAdminData();
+  };
+
+  const saveConsultationTimeBlock = async () => {
+    if (!newConsultationTimeBlock.label.trim() || !newConsultationTimeBlock.time_value.trim()) {
+      toast.error("Please add a time label and 24-hour time value.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("consultation_time_blocks").insert({
+        label: newConsultationTimeBlock.label.trim(),
+        time_value: newConsultationTimeBlock.time_value.trim(),
+        display_order: Number(newConsultationTimeBlock.display_order) || 0,
+        is_published: newConsultationTimeBlock.is_published,
+      });
+
+      if (error) throw error;
+
+      toast.success("Consultation time block added");
+      setNewConsultationTimeBlock({
+        label: "",
+        time_value: "",
+        display_order: "0",
+        is_published: true,
+      });
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to save consultation time block:", error);
+      toast.error(getErrorMessage(error) || "Failed to save consultation time block");
+    }
+  };
+
+  const updateConsultationTimeBlock = async (
+    block: ConsultationTimeBlockRow,
+    field: "label" | "time_value" | "display_order" | "is_published",
+    value: string | boolean,
+  ) => {
+    const nextValue = field === "display_order" ? Number(value) || 0 : value;
+
+    const { error } = await supabase
+      .from("consultation_time_blocks")
+      .update({ [field]: nextValue })
+      .eq("id", block.id);
+
+    if (error) {
+      toast.error("Failed to update time block");
+      return;
+    }
+
+    await loadAdminData();
   };
 
   const updateUserRole = async (userId: string, nextRole: AppRole) => {
@@ -3027,6 +3167,126 @@ const AdminDashboard = () => {
 
             {/* Users Tab */}
             <TabsContent value="consultations">
+              <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Consultation Setup</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <h4 className="mb-3 font-medium">Services and Prices</h4>
+                    <div className="grid gap-3 lg:grid-cols-2">
+                      {consultationServices.map((service) => (
+                        <div key={service.id} className="rounded-lg border border-border p-4 space-y-3">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <Input
+                              value={service.title}
+                              onChange={(e) => void updateConsultationService(service, "title", e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              value={service.price}
+                              onChange={(e) => void updateConsultationService(service, "price", e.target.value)}
+                            />
+                          </div>
+                          <Textarea
+                            rows={2}
+                            value={service.description}
+                            onChange={(e) => void updateConsultationService(service, "description", e.target.value)}
+                          />
+                          <div className="grid gap-3 md:grid-cols-3">
+                            <Input
+                              type="number"
+                              value={service.duration_minutes}
+                              onChange={(e) => void updateConsultationService(service, "duration_minutes", e.target.value)}
+                            />
+                            <Input
+                              type="number"
+                              value={service.display_order ?? 0}
+                              onChange={(e) => void updateConsultationService(service, "display_order", e.target.value)}
+                            />
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(service.is_published)}
+                                onChange={(e) => void updateConsultationService(service, "is_published", e.target.checked)}
+                              />
+                              Published
+                            </label>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => void deleteContent("consultation_services", service.id, "Consultation service")}
+                          >
+                            <Trash2 size={16} />
+                            Delete Service
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-border p-4 lg:grid-cols-[1fr,1fr,1fr,120px,120px,auto]">
+                      <Input placeholder="slug" value={newConsultationService.slug} onChange={(e) => setNewConsultationService((p) => ({ ...p, slug: e.target.value }))} />
+                      <Input placeholder="Title" value={newConsultationService.title} onChange={(e) => setNewConsultationService((p) => ({ ...p, title: e.target.value }))} />
+                      <Input placeholder="Description" value={newConsultationService.description} onChange={(e) => setNewConsultationService((p) => ({ ...p, description: e.target.value }))} />
+                      <Input type="number" placeholder="Minutes" value={newConsultationService.duration_minutes} onChange={(e) => setNewConsultationService((p) => ({ ...p, duration_minutes: e.target.value }))} />
+                      <Input type="number" placeholder="Price" value={newConsultationService.price} onChange={(e) => setNewConsultationService((p) => ({ ...p, price: e.target.value }))} />
+                      <Button variant="gold" onClick={() => void saveConsultationService()}>Add</Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="mb-3 font-medium">Available Time Blocks</h4>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {consultationTimeBlocks.map((block) => (
+                        <div key={block.id} className="rounded-lg border border-border p-4 space-y-3">
+                          <Input
+                            value={block.label}
+                            onChange={(e) => void updateConsultationTimeBlock(block, "label", e.target.value)}
+                          />
+                          <Input
+                            type="time"
+                            value={block.time_value}
+                            onChange={(e) => void updateConsultationTimeBlock(block, "time_value", e.target.value)}
+                          />
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="number"
+                              value={block.display_order ?? 0}
+                              onChange={(e) => void updateConsultationTimeBlock(block, "display_order", e.target.value)}
+                            />
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(block.is_published)}
+                                onChange={(e) => void updateConsultationTimeBlock(block, "is_published", e.target.checked)}
+                              />
+                              Published
+                            </label>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => void deleteContent("consultation_time_blocks", block.id, "Time block")}
+                          >
+                            <Trash2 size={16} />
+                            Delete Time
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-border p-4 md:grid-cols-[1fr,1fr,120px,auto]">
+                      <Input placeholder="Label e.g. 9:00 AM" value={newConsultationTimeBlock.label} onChange={(e) => setNewConsultationTimeBlock((p) => ({ ...p, label: e.target.value }))} />
+                      <Input type="time" value={newConsultationTimeBlock.time_value} onChange={(e) => setNewConsultationTimeBlock((p) => ({ ...p, time_value: e.target.value }))} />
+                      <Input type="number" placeholder="Order" value={newConsultationTimeBlock.display_order} onChange={(e) => setNewConsultationTimeBlock((p) => ({ ...p, display_order: e.target.value }))} />
+                      <Button variant="gold" onClick={() => void saveConsultationTimeBlock()}>Add Time</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Consultation Requests</CardTitle>
@@ -3132,6 +3392,7 @@ const AdminDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
+              </div>
             </TabsContent>
 
             {/* Users Tab */}

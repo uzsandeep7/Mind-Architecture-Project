@@ -77,7 +77,7 @@ export const Navbar = () => {
         }`}
       >
         {/* ⭐ FIX: Extra right breathing room added */}
-        <nav className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
+        <nav className="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-6 2xl:px-10">
           <div className="flex items-center justify-between h-16">
 
             {/* LOGO */}
@@ -92,12 +92,12 @@ export const Navbar = () => {
             </Link>
 
             {/* NAV LINKS */}
-            <div className="hidden lg:flex items-center gap-2.5 xl:gap-4 ml-4 xl:ml-6 min-w-0">
+            <div className="hidden xl:flex items-center gap-3 2xl:gap-4 ml-4 2xl:ml-6 min-w-0">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className={`text-sm font-medium tracking-normal whitespace-nowrap transition-all duration-300 hover:text-primary ${
+                  className={`text-[13px] 2xl:text-sm font-medium tracking-normal whitespace-nowrap transition-all duration-300 hover:text-primary ${
                     location.pathname === link.href
                       ? "text-primary"
                       : "text-white"
@@ -109,12 +109,12 @@ export const Navbar = () => {
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="hidden lg:flex items-center shrink-0 ml-3 xl:ml-4">
+            <div className="hidden xl:flex items-center shrink-0 ml-3 2xl:ml-4">
 
               {/* ICON GROUP — clean spacing */}
               <div className="flex items-center gap-1.5 xl:gap-2.5">
                 {user ? (
-                  <div className="hidden min-[1450px]:flex items-center mr-1 max-w-[128px]">
+                  <div className="hidden min-[1500px]:flex items-center mr-1 max-w-[128px]">
                     <span
                       className={`inline-flex max-w-full items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm ${
                         membershipTier === "premium"
@@ -185,7 +185,7 @@ export const Navbar = () => {
                     <DropdownMenuSeparator />
 
                     <DropdownMenuItem asChild>
-                      <Link to="/dashboard" className="flex gap-2">
+                  <Link to="/dashboard?tab=profile" className="flex gap-2">
                         <LayoutDashboard className="w-4 h-4" />
                         Dashboard
                       </Link>
@@ -233,7 +233,7 @@ export const Navbar = () => {
             </div>
 
             {/* MOBILE */}
-            <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex items-center gap-2 xl:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="text-white"
@@ -253,7 +253,7 @@ export const Navbar = () => {
             initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-md pt-24 px-6 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-md pt-24 px-6 xl:hidden"
           >
             <div className="flex flex-col gap-6">
               {navLinks.map((link) => (

@@ -14,10 +14,11 @@ import {
   Calendar,
   Video,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 const contactInfo = [
   {
@@ -46,32 +47,59 @@ const contactInfo = [
   },
 ];
 
-const consultationTypes = [
+type ConsultationService = Database["public"]["Tables"]["consultation_services"]["Row"];
+
+const fallbackConsultationTypes: ConsultationService[] = [
   {
-    icon: MessageSquare,
+    id: "discovery",
+    slug: "discovery",
     title: "Discovery Call",
-    duration: "30 min",
+    duration_minutes: 30,
+    price: 0,
     description:
       "A free introductory call to discuss your goals and how we can help.",
+    display_order: 1,
+    is_published: true,
+    created_at: "",
+    updated_at: "",
   },
   {
-    icon: Video,
+    id: "coaching",
+    slug: "coaching",
     title: "1-on-1 Coaching",
-    duration: "60 min",
+    duration_minutes: 60,
+    price: 99,
     description:
       "Personalized coaching session tailored to your specific challenges.",
+    display_order: 2,
+    is_published: true,
+    created_at: "",
+    updated_at: "",
   },
   {
-    icon: Calendar,
+    id: "strategic",
+    slug: "strategic",
     title: "Strategic Planning",
-    duration: "90 min",
+    duration_minutes: 90,
+    price: 249,
     description:
       "Comprehensive session to map out your transformation journey.",
+    display_order: 3,
+    is_published: true,
+    created_at: "",
+    updated_at: "",
   },
 ];
 
+const getConsultationIcon = (slug: string) => {
+  if (slug.includes("coaching")) return Video;
+  if (slug.includes("strategic")) return Calendar;
+  return MessageSquare;
+};
+
 const ContactPage = () => {
   const navigate = useNavigate();
+  const [consultationTypes, setConsultationTypes] = useState<ConsultationService[]>(fallbackConsultationTypes);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -79,6 +107,22 @@ const ContactPage = () => {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const loadConsultationTypes = async () => {
+      const { data, error } = await supabase
+        .from("consultation_services")
+        .select("*")
+        .eq("is_published", true)
+        .order("display_order", { ascending: true });
+
+      if (!error && data?.length) {
+        setConsultationTypes(data);
+      }
+    };
+
+    void loadConsultationTypes();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,39 +302,42 @@ const ContactPage = () => {
                 Architecture.
               </p>
               <div className="space-y-4">
-                {consultationTypes.map((type, index) => (
-                  <motion.div
-                    key={type.title}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-card p-6 rounded-xl border border-border hover-lift group cursor-pointer"
-                    onClick={() => openConsultationBooking(type.title)}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                        <type.icon className="text-primary" size={22} />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-heading font-bold text-lg">
-                            {type.title}
-                          </h3>
-                          <span className="text-primary font-semibold uppercase tracking-wide text-sm">
-                            Free
-                          </span>
+                {consultationTypes.map((type, index) => {
+                  const Icon = getConsultationIcon(type.slug);
+                  return (
+                    <motion.div
+                      key={type.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-card p-6 rounded-xl border border-border hover-lift group cursor-pointer"
+                      onClick={() => openConsultationBooking(type.slug)}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+                          <Icon className="text-primary" size={22} />
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {type.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Duration: {type.duration}
-                        </p>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-heading font-bold text-lg">
+                              {type.title}
+                            </h3>
+                            <span className="text-primary font-semibold uppercase tracking-wide text-sm">
+                              {Number(type.price) > 0 ? `$${Number(type.price).toFixed(0)}` : "Free"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {type.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Duration: {type.duration_minutes} min
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
               <div className="mt-8">
                 <Button
@@ -308,12 +355,14 @@ const ContactPage = () => {
         </div>
       </section>
 
-      <section className="h-96 bg-secondary relative">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <MapPin size={48} className="text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Interactive map would be displayed here
+      <section className="py-16 bg-secondary/40">
+        <div className="container-wide">
+          <div className="rounded-2xl border border-border bg-card p-8 text-center shadow-soft">
+            <MapPin size={42} className="text-primary mx-auto mb-4" />
+            <h2 className="font-heading text-2xl font-bold">Banksia, NSW</h2>
+            <p className="mt-2 text-muted-foreground">
+              Mind Architecture supports clients through online consultations,
+              workshops, and arranged in-person sessions.
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -91,11 +92,12 @@ const DashboardPage = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [selectedEventBooking, setSelectedEventBooking] = useState<EventBooking | null>(null);
   const validTabs = ["bookings", "orders", "consultations", "profile"] as const;
   const requestedTab = searchParams.get("tab");
-  const activeTab = validTabs.includes((requestedTab as (typeof validTabs)[number]) ?? "bookings")
+  const activeTab = validTabs.includes((requestedTab as (typeof validTabs)[number]) ?? "profile")
     ? (requestedTab as (typeof validTabs)[number])
-    : "bookings";
+    : "profile";
 
   useEffect(() => {
     if (!user) return;
@@ -465,14 +467,14 @@ const DashboardPage = () => {
                               </p>
                             ) : null}
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {booking.event?.id ? (
+                              {booking.event ? (
                                 <Button
                                   variant="goldOutline"
                                   size="sm"
                                   className="h-8 px-3"
-                                  onClick={() => navigate(`/events/${booking.event?.id}`)}
+                                  onClick={() => setSelectedEventBooking(booking)}
                                 >
-                                  View Event Details
+                                  View Summary
                                 </Button>
                               ) : null}
                               <Button
@@ -740,32 +742,6 @@ const DashboardPage = () => {
                       />
                     </div>
                     <div>
-                      <Label className="text-white/80">Membership Plan</Label>
-                      <Input
-                        value={profile?.membership_tier === "premium" ? "Premium" : "Free"}
-                        readOnly
-                        className="bg-black/40 border-white/10 text-white"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-white/80">
-                        {profile?.membership_tier === "premium"
-                          ? membershipDateLabel
-                          : "Membership Status"}
-                      </Label>
-                      <Input
-                        value={
-                          profile?.membership_tier === "premium"
-                            ? membershipDateValue
-                              ? format(new Date(membershipDateValue), "PPP")
-                              : "Premium active"
-                            : "Free plan"
-                        }
-                        readOnly
-                        className="bg-black/40 border-white/10 text-white"
-                      />
-                    </div>
-                    <div>
                       <Label htmlFor="fullName" className="text-white/80">
                         Full Name
                       </Label>
@@ -787,6 +763,48 @@ const DashboardPage = () => {
           </Tabs>
         </div>
       </section>
+
+      <Dialog open={Boolean(selectedEventBooking)} onOpenChange={() => setSelectedEventBooking(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          {selectedEventBooking?.event ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="font-heading text-2xl">
+                  {selectedEventBooking.event.title}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 text-sm">
+                <p className="text-muted-foreground">
+                  This is a saved summary from your booking history. If the event has finished or is hidden from public pages, it still remains here for your records.
+                </p>
+                <div className="rounded-xl border border-border bg-secondary/40 p-4">
+                  <p>
+                    <span className="font-medium">Date:</span>{" "}
+                    {format(new Date(selectedEventBooking.event.date), "PPP 'at' p")}
+                  </p>
+                  <p>
+                    <span className="font-medium">Place:</span>{" "}
+                    {selectedEventBooking.event.venue || "To be confirmed"}
+                  </p>
+                  <p>
+                    <span className="font-medium">Seats:</span>{" "}
+                    {selectedEventBooking.seats}
+                  </p>
+                  <p>
+                    <span className="font-medium">Status:</span>{" "}
+                    {selectedEventBooking.status}
+                  </p>
+                </div>
+                {selectedEventBooking.event.description ? (
+                  <p className="whitespace-pre-wrap leading-relaxed">
+                    {selectedEventBooking.event.description}
+                  </p>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
