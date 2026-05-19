@@ -43,13 +43,14 @@ interface Comment {
 }
 
 const BlogPostPage = () => {
-  const { isMember, isAdmin, isOwner } = useAuth();
+  const { user: authUser, isMember, isAdmin, isOwner } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPostingComment, setIsPostingComment] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -115,7 +116,9 @@ const BlogPostPage = () => {
   };
 
   const handleComment = async () => {
-    if (!user) {
+    const currentUser = user ?? authUser;
+
+    if (!currentUser) {
       toast({
         title: "Please sign in",
         description: "You need to be signed in to comment.",
@@ -126,20 +129,48 @@ const BlogPostPage = () => {
 
     if (!post || !newComment.trim()) return;
 
-    const { error } = await supabase.from("blog_comments").insert({
-      post_id: post.id,
-      user_id: user.id,
-      content: newComment.trim(),
-    });
+    setIsPostingComment(true);
 
-    if (!error) {
-      setNewComment("");
-      fetchComments(post.id);
+    const commentContent = newComment.trim();
+    const { data, error } = await supabase
+      .from("blog_comments")
+      .insert({
+        post_id: post.id,
+        user_id: currentUser.id,
+        content: commentContent,
+      })
+      .select("id, content, created_at, user_id")
+      .single();
+
+    setIsPostingComment(false);
+
+    if (error || !data) {
       toast({
-        title: "Comment added",
-        description: "Your comment has been posted successfully.",
+        title: "Could not post comment",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
       });
+      return;
     }
+
+    setComments((current) => [
+      {
+        ...data,
+        profile: {
+          full_name:
+            authUser?.user_metadata?.full_name ||
+            authUser?.user_metadata?.name ||
+            authUser?.email?.split("@")[0] ||
+            "You",
+        },
+      },
+      ...current,
+    ]);
+    setNewComment("");
+    toast({
+      title: "Comment added",
+      description: "Your comment has been posted successfully.",
+    });
   };
 
   const handleDeleteComment = async (commentId: string) => {
@@ -352,7 +383,7 @@ const BlogPostPage = () => {
 
           {/* Comment Form */}
           <div className="mb-12">
-            {user ? (
+            {user || authUser ? (
               <div className="space-y-4">
                 <Textarea
                   placeholder="Share your thoughts..."
@@ -360,8 +391,12 @@ const BlogPostPage = () => {
                   onChange={(e) => setNewComment(e.target.value)}
                   rows={4}
                 />
-                <Button variant="gold" onClick={handleComment} disabled={!newComment.trim()}>
-                  Post Comment
+                <Button
+                  variant="gold"
+                  onClick={() => void handleComment()}
+                  disabled={!newComment.trim() || isPostingComment}
+                >
+                  {isPostingComment ? "Posting..." : "Post Comment"}
                 </Button>
               </div>
             ) : (
