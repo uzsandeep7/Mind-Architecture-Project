@@ -8,11 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Clock,
-  Heart,
   MessageCircle,
   ArrowLeft,
   Share2,
-  Bookmark,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -44,14 +43,12 @@ interface Comment {
 }
 
 const BlogPostPage = () => {
-  const { isMember } = useAuth();
+  const { isMember, isAdmin, isOwner } = useAuth();
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<BlogPost | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [likes, setLikes] = useState(234);
-  const [hasLiked, setHasLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -86,24 +83,15 @@ const BlogPostPage = () => {
       if (!error && data) {
         setPost(data);
         fetchComments(data.id);
-        fetchLikes(data.id);
       } else {
         setPost(null);
         setComments([]);
-        setLikes(0);
-        setHasLiked(false);
       }
       setLoading(false);
     };
 
     fetchPost();
   }, [slug]);
-
-  useEffect(() => {
-    if (post && user && !post.id.startsWith("mock-")) {
-      fetchLikes(post.id);
-    }
-  }, [user, post]);
 
   const fetchComments = async (postId: string) => {
     const { data } = await supabase
@@ -123,56 +111,6 @@ const BlogPostPage = () => {
         ...c,
         profile: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles
       })));
-    }
-  };
-
-  const fetchLikes = async (postId: string) => {
-    const { count } = await supabase
-      .from("blog_likes")
-      .select("*", { count: "exact", head: true })
-      .eq("post_id", postId);
-
-    setLikes(count || 0);
-
-    if (user) {
-      const { data } = await supabase
-        .from("blog_likes")
-        .select("id")
-        .eq("post_id", postId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      setHasLiked(!!data);
-    }
-  };
-
-  const handleLike = async () => {
-    if (!user) {
-      toast({
-        title: "Please sign in",
-        description: "You need to be signed in to like posts.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!post) return;
-
-    if (hasLiked) {
-      await supabase
-        .from("blog_likes")
-        .delete()
-        .eq("post_id", post.id)
-        .eq("user_id", user.id);
-      setLikes((prev) => prev - 1);
-      setHasLiked(false);
-    } else {
-      await supabase.from("blog_likes").insert({
-        post_id: post.id,
-        user_id: user.id,
-      });
-      setLikes((prev) => prev + 1);
-      setHasLiked(true);
     }
   };
 
@@ -200,6 +138,62 @@ const BlogPostPage = () => {
       toast({
         title: "Comment added",
         description: "Your comment has been posted successfully.",
+      });
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!user) return;
+
+    const confirmed = window.confirm("Delete this comment?");
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("blog_comments").delete().eq("id", commentId);
+
+    if (error) {
+      toast({
+        title: "Could not delete comment",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setComments((current) => current.filter((comment) => comment.id !== commentId));
+    toast({
+      title: "Comment deleted",
+      description: "The comment has been removed.",
+    });
+  };
+
+  const handleShare = async () => {
+    if (!post) return;
+
+    const shareUrl = window.location.href;
+    const shareData = {
+      title: post.title,
+      text: post.excerpt || "Read this Mind Architecture insight.",
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: "Link copied",
+        description: "Article link copied to clipboard.",
+      });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+
+      toast({
+        title: "Could not share article",
+        description: "Please copy the page URL from your browser.",
+        variant: "destructive",
       });
     }
   };
@@ -333,26 +327,14 @@ const BlogPostPage = () => {
         <div className="container max-w-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button
-                onClick={handleLike}
-                className={`flex items-center gap-2 transition-colors ${
-                  hasLiked ? "text-red-500" : "text-muted-foreground hover:text-red-500"
-                }`}
-              >
-                <Heart className={`w-5 h-5 ${hasLiked ? "fill-current" : ""}`} />
-                <span>{likes} likes</span>
-              </button>
               <span className="flex items-center gap-2 text-muted-foreground">
                 <MessageCircle className="w-5 h-5" />
                 {comments.length} comments
               </span>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={() => void handleShare()} aria-label="Share article">
                 <Share2 className="w-5 h-5" />
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Bookmark className="w-5 h-5" />
               </Button>
             </div>
           </div>
@@ -414,13 +396,26 @@ const BlogPostPage = () => {
                       <span className="font-medium">
                         {comment.profile?.full_name || "Anonymous"}
                       </span>
-                      <span className="text-sm text-muted-foreground">
-                        {new Date(comment.created_at).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(comment.created_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
+                        </span>
+                        {user && (comment.user_id === user.id || isAdmin || isOwner) ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => void handleDeleteComment(comment.id)}
+                            aria-label="Delete comment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                     <p className="text-muted-foreground">{comment.content}</p>
                   </div>
