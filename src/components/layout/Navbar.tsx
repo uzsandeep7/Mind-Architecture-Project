@@ -77,7 +77,7 @@ export const Navbar = () => {
         }`}
       >
         {/* ⭐ FIX: Extra right breathing room added */}
-        <nav className="max-w-[1560px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-6 2xl:px-10">
+        <nav className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-4 xl:px-6 2xl:px-10">
           <div className="flex items-center justify-between h-16">
 
             {/* LOGO */}
@@ -86,18 +86,18 @@ export const Navbar = () => {
                 <img
                   src="/mind-architecture-logo.png"
                   alt="Mind Architecture Logo"
-                  className="h-9 w-auto object-contain"
+                  className="h-8 xl:h-9 w-auto object-contain"
                 />
               </div>
             </Link>
 
             {/* NAV LINKS */}
-            <div className="hidden xl:flex items-center gap-3 2xl:gap-4 ml-4 2xl:ml-6 min-w-0">
+            <div className="hidden lg:flex items-center gap-2 xl:gap-3 2xl:gap-4 ml-3 xl:ml-4 2xl:ml-6 min-w-0">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
-                  className={`text-[13px] 2xl:text-sm font-medium tracking-normal whitespace-nowrap transition-all duration-300 hover:text-primary ${
+                  className={`text-[11px] xl:text-[13px] 2xl:text-sm font-medium tracking-normal whitespace-nowrap transition-all duration-300 hover:text-primary ${
                     location.pathname === link.href
                       ? "text-primary"
                       : "text-white"
@@ -109,10 +109,10 @@ export const Navbar = () => {
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="hidden xl:flex items-center shrink-0 ml-3 2xl:ml-4">
+            <div className="hidden lg:flex items-center shrink-0 ml-2 xl:ml-3 2xl:ml-4">
 
               {/* ICON GROUP — clean spacing */}
-              <div className="flex items-center gap-1.5 xl:gap-2.5">
+              <div className="flex items-center gap-0.5 xl:gap-1.5 2xl:gap-2.5">
                 {user ? (
                   <div className="hidden min-[1500px]:flex items-center mr-1 max-w-[128px]">
                     <span
@@ -134,17 +134,17 @@ export const Navbar = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setIsSearchOpen(true)}
-                  className="rounded-full text-white hover:text-primary hover:bg-white/5"
+                  className="h-9 w-9 rounded-full text-white hover:text-primary hover:bg-white/5"
                 >
-                  <Search className="w-5 h-5" />
+                  <Search className="w-4 h-4 xl:w-5 xl:h-5" />
                 </Button>
 
-                <Button variant="ghost" size="icon" asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
                   <Link
                     to="/cart"
                     className="relative text-white hover:text-primary"
                   >
-                    <ShoppingCart className="w-5 h-5" />
+                    <ShoppingCart className="w-4 h-4 xl:w-5 xl:h-5" />
                     {itemCount > 0 && (
                       <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-xs rounded-full flex items-center justify-center text-primary-foreground">
                         {itemCount}
@@ -158,9 +158,9 @@ export const Navbar = () => {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-white hover:text-primary hover:bg-white/5"
+                      className="h-9 w-9 rounded-full text-white hover:text-primary hover:bg-white/5"
                     >
-                      <User className="w-5 h-5" />
+                      <User className="w-4 h-4 xl:w-5 xl:h-5" />
                     </Button>
                   </DropdownMenuTrigger>
 
@@ -185,7 +185,7 @@ export const Navbar = () => {
                     <DropdownMenuSeparator />
 
                     <DropdownMenuItem asChild>
-                  <Link to="/dashboard?tab=profile" className="flex gap-2">
+                      <Link to="/dashboard?tab=profile" className="flex gap-2">
                         <LayoutDashboard className="w-4 h-4" />
                         Dashboard
                       </Link>
@@ -218,14 +218,15 @@ export const Navbar = () => {
               </div>
 
               {/* ⭐ CTA — perfectly spaced from right */}
-              <div className="ml-3 xl:ml-4">
+              <div className="ml-2 xl:ml-3 2xl:ml-4">
                 <Button
                   variant="gold"
-                  className="h-10 px-4 xl:px-5 shrink-0 rounded-xl text-sm font-semibold shadow-md hover:shadow-yellow-500/20 transition"
+                  className="h-9 xl:h-10 px-3 xl:px-4 2xl:px-5 shrink-0 rounded-xl text-xs xl:text-sm font-semibold shadow-md hover:shadow-yellow-500/20 transition"
                   asChild
                 >
                   <Link to="/consultation">
-                    Book Consultation
+                    <span className="hidden xl:inline">Book Consultation</span>
+                    <span className="xl:hidden">Book</span>
                   </Link>
                 </Button>
               </div>
@@ -233,7 +234,7 @@ export const Navbar = () => {
             </div>
 
             {/* MOBILE */}
-            <div className="flex items-center gap-2 xl:hidden">
+            <div className="flex items-center gap-2 lg:hidden">
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="text-white"
@@ -253,7 +254,7 @@ export const Navbar = () => {
             initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
-            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-md pt-24 px-6 xl:hidden"
+            className="fixed inset-0 z-40 bg-black/95 backdrop-blur-md pt-24 px-6 lg:hidden"
           >
             <div className="flex flex-col gap-6">
               {navLinks.map((link) => (
