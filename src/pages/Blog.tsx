@@ -73,7 +73,7 @@ const Blog = () => {
             </Badge>
             <h1 className="mb-6 text-4xl font-heading font-bold md:text-6xl">The Blog</h1>
             <p className="text-lg text-muted-foreground">
-              Explore live articles managed from the backend, without the old planted demo stories.
+              Explore fresh articles and resources from the Mind Architecture library.
             </p>
           </motion.div>
         </div>
