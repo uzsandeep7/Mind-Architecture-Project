@@ -258,7 +258,7 @@ const EventsPage = () => {
               <span className="text-gradient-gold"> MIND Architecture Events</span>
             </h1>
             <p className="text-lg text-cream/70">
-              Explore upcoming MIND Architecture events and programs loaded live from the backend.
+              Explore upcoming MIND Architecture events and programs.
             </p>
           </motion.div>
         </div>

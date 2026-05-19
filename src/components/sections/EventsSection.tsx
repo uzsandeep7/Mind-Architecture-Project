@@ -184,7 +184,7 @@ export const EventsSection = () => {
             Transform Your Life in Person
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            These featured events and programs are loaded from the live backend, so the homepage always reflects current admin content.
+            These featured events and programs are refreshed live, so the homepage always reflects current admin content.
           </p>
         </motion.div>
 
