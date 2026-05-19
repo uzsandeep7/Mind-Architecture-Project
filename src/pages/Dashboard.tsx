@@ -88,6 +88,8 @@ const DashboardPage = () => {
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [membershipStatus, setMembershipStatus] = useState<MembershipStatus | null>(null);
   const [retryingOrderId, setRetryingOrderId] = useState<string | null>(null);
+  const [retryingEventBookingId, setRetryingEventBookingId] = useState<string | null>(null);
+  const [retryingConsultationId, setRetryingConsultationId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -300,6 +302,87 @@ const DashboardPage = () => {
     }
   };
 
+  const handleResumeEventPayment = async (booking: EventBooking) => {
+    if (!booking.event) {
+      toast.error("Event details are no longer available for this booking.");
+      return;
+    }
+
+    setRetryingEventBookingId(booking.id);
+
+    try {
+      const successUrl = `${window.location.origin}/events/${booking.event.id}?success=1&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/events/${booking.event.id}?canceled=1`;
+
+      const { data, error } = await supabase.functions.invoke("create-event-checkout", {
+        body: {
+          bookingId: booking.id,
+          eventId: booking.event.id,
+          seats: booking.seats,
+          successUrl,
+          cancelUrl,
+        },
+      });
+
+      if (error || !data?.url) {
+        throw error ?? new Error("Failed to reopen Stripe checkout");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Error resuming event payment:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to reopen event payment.");
+      setRetryingEventBookingId(null);
+    }
+  };
+
+  const getConsultationPaymentPrice = (consultation: Consultation) => {
+    const match = consultation.message?.match(/Service price:\s*\$?([\d.]+)/i);
+    return match ? Number(match[1]) : 0;
+  };
+
+  const handleResumeConsultationPayment = async (consultation: Consultation) => {
+    const servicePrice = getConsultationPaymentPrice(consultation);
+
+    if (!Number.isFinite(servicePrice) || servicePrice <= 0) {
+      toast.error("Payment amount is missing for this consultation. Please contact Mind Architecture.");
+      return;
+    }
+
+    setRetryingConsultationId(consultation.id);
+
+    try {
+      const serviceTitle = consultation.topic?.split(" - ")[0] || "Consultation";
+      const successUrl = `${window.location.origin}/consultation?success=1&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/consultation?canceled=1`;
+
+      const { data, error } = await supabase.functions.invoke("create-consultation-checkout", {
+        body: {
+          consultationId: consultation.id,
+          consultation: {
+            date: consultation.date,
+            topic: consultation.topic || serviceTitle,
+            message: consultation.message,
+            serviceTitle,
+            price: servicePrice,
+          },
+          successUrl,
+          cancelUrl,
+        },
+      });
+
+      if (error || !data?.url) {
+        throw error ?? new Error("Failed to reopen Stripe checkout");
+      }
+
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Error resuming consultation payment:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to reopen consultation payment.");
+      setRetryingConsultationId(null);
+    }
+  };
+
   const deleteUserHistory = async (
     table: "event_bookings" | "orders" | "consultations",
     id: string,
@@ -468,6 +551,18 @@ const DashboardPage = () => {
                               </p>
                             ) : null}
                             <div className="mt-3 flex flex-wrap gap-2">
+                              {booking.status === "pending" ? (
+                                <Button
+                                  variant="gold"
+                                  size="sm"
+                                  className="h-8 px-3"
+                                  disabled={retryingEventBookingId === booking.id}
+                                  onClick={() => void handleResumeEventPayment(booking)}
+                                >
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  {retryingEventBookingId === booking.id ? "Opening Checkout..." : "Complete Payment"}
+                                </Button>
+                              ) : null}
                               {booking.event ? (
                                 <Button
                                   variant="goldOutline"
@@ -677,6 +772,18 @@ const DashboardPage = () => {
                               <span className="font-medium text-white">Notes:</span>{" "}
                               {consultation.message}
                             </p>
+                          ) : null}
+                          {consultation.status === "payment_pending" ? (
+                            <Button
+                              variant="gold"
+                              size="sm"
+                              className="h-8 px-3"
+                              disabled={retryingConsultationId === consultation.id}
+                              onClick={() => void handleResumeConsultationPayment(consultation)}
+                            >
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              {retryingConsultationId === consultation.id ? "Opening Checkout..." : "Complete Payment"}
+                            </Button>
                           ) : null}
                           <Button
                             variant="outline"

@@ -47,20 +47,50 @@ serve(async (req) => {
       });
     }
 
-    const { eventId, seats, successUrl, cancelUrl } = await req.json();
+    const { eventId, bookingId, seats, successUrl, cancelUrl } = await req.json();
     const seatCount = Number(seats);
-    if (!eventId || !successUrl || !cancelUrl || !Number.isInteger(seatCount) || seatCount < 1) {
+    if ((!eventId && !bookingId) || !successUrl || !cancelUrl || !Number.isInteger(seatCount) || seatCount < 1) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    let existingBooking: { id: string; event_id: string; seats: number; status: string; total_amount: number } | null = null;
+
+    if (bookingId) {
+      const { data: booking, error: bookingError } = await supabaseAdmin
+        .from("event_bookings")
+        .select("id, event_id, seats, status, total_amount")
+        .eq("id", bookingId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (bookingError || !booking) {
+        return new Response(JSON.stringify({ error: "Pending booking not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (booking.status !== "pending") {
+        return new Response(JSON.stringify({ error: "Only pending event bookings can be paid" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      existingBooking = booking;
+    }
+
+    const resolvedEventId = existingBooking?.event_id ?? eventId;
+    const resolvedSeatCount = existingBooking?.seats ?? seatCount;
+
     const [{ data: event, error: eventError }, { data: profile }] = await Promise.all([
       supabase
         .from("events")
         .select("id, title, price, member_price, available_seats, is_members_only, is_published")
-        .eq("id", eventId)
+        .eq("id", resolvedEventId)
         .maybeSingle(),
       supabase
         .from("profiles")
@@ -84,7 +114,7 @@ serve(async (req) => {
       });
     }
 
-    if (event.available_seats < seatCount) {
+    if (event.available_seats < resolvedSeatCount) {
       return new Response(JSON.stringify({ error: "Not enough seats available" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -93,32 +123,38 @@ serve(async (req) => {
 
     const unitPrice =
       isMember && event.member_price !== null ? Number(event.member_price) : Number(event.price);
-    const subtotal = roundCurrency(unitPrice * seatCount);
+    const subtotal = roundCurrency(unitPrice * resolvedSeatCount);
     const taxAmount = roundCurrency(subtotal * TAX_RATE);
     const totalAmount = roundCurrency(subtotal + taxAmount);
 
-    const { data: booking, error: bookingError } = await supabaseAdmin
-      .from("event_bookings")
-      .insert({
-        user_id: user.id,
-        event_id: event.id,
-        seats: seatCount,
-        total_amount: totalAmount,
-        status: "pending",
-      })
-      .select("id")
-      .single();
+    let booking = existingBooking ? { id: existingBooking.id } : null;
 
-    if (bookingError || !booking) {
-      return new Response(JSON.stringify({ error: bookingError?.message ?? "Failed to create booking" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!booking) {
+      const { data: createdBooking, error: bookingError } = await supabaseAdmin
+        .from("event_bookings")
+        .insert({
+          user_id: user.id,
+          event_id: event.id,
+          seats: resolvedSeatCount,
+          total_amount: totalAmount,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+
+      if (bookingError || !createdBooking) {
+        return new Response(JSON.stringify({ error: bookingError?.message ?? "Failed to create booking" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      booking = createdBooking;
     }
 
     const lineItems = [
       {
-        quantity: seatCount,
+        quantity: resolvedSeatCount,
         price_data: {
           currency: "aud",
           product_data: {

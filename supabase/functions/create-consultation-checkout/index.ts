@@ -60,7 +60,7 @@ serve(async (req) => {
       });
     }
 
-    const { consultation, successUrl, cancelUrl } = await req.json();
+    const { consultation, consultationId, successUrl, cancelUrl } = await req.json();
     const price = Number(consultation?.price);
     const serviceTitle = String(consultation?.serviceTitle ?? "Consultation");
 
@@ -71,20 +71,56 @@ serve(async (req) => {
       });
     }
 
-    const { data: savedConsultation, error: consultationError } = await supabaseAdmin
-      .from("consultations")
-      .insert({
-        user_id: user.id,
-        date: consultation.date,
-        topic: consultation.topic,
-        message: consultation.message ?? null,
-        status: "payment_pending",
-      })
-      .select("id")
-      .single();
+    let savedConsultation: { id: string } | null = null;
 
-    if (consultationError || !savedConsultation) {
-      return new Response(JSON.stringify({ error: consultationError?.message ?? "Failed to create consultation" }), {
+    if (consultationId) {
+      const { data: existingConsultation, error: existingError } = await supabaseAdmin
+        .from("consultations")
+        .select("id, user_id, status")
+        .eq("id", consultationId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (existingError || !existingConsultation) {
+        return new Response(JSON.stringify({ error: "Pending consultation not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (existingConsultation.status !== "payment_pending") {
+        return new Response(JSON.stringify({ error: "Only payment pending consultations can be paid" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      savedConsultation = { id: existingConsultation.id };
+    } else {
+      const { data: createdConsultation, error: consultationError } = await supabaseAdmin
+        .from("consultations")
+        .insert({
+          user_id: user.id,
+          date: consultation.date,
+          topic: consultation.topic,
+          message: consultation.message ?? null,
+          status: "payment_pending",
+        })
+        .select("id")
+        .single();
+
+      if (consultationError || !createdConsultation) {
+        return new Response(JSON.stringify({ error: consultationError?.message ?? "Failed to create consultation" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      savedConsultation = createdConsultation;
+    }
+
+    if (!savedConsultation) {
+      return new Response(JSON.stringify({ error: "Failed to prepare consultation checkout" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
