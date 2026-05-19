@@ -77,11 +77,11 @@ export const Navbar = () => {
         }`}
       >
         {/* ⭐ FIX: Extra right breathing room added */}
-        <nav className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-4 xl:px-6 2xl:px-10">
+        <nav className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-5 xl:px-8 2xl:px-10">
           <div className="flex items-center justify-between h-16">
 
             {/* LOGO */}
-            <Link to="/" className="flex items-center shrink-0">
+            <Link to="/" className="flex items-center shrink-0 mr-5 xl:mr-8">
               <div className="bg-white rounded-md px-2 py-1 shadow-sm">
                 <img
                   src="/mind-architecture-logo.png"
@@ -92,7 +92,7 @@ export const Navbar = () => {
             </Link>
 
             {/* NAV LINKS */}
-            <div className="hidden lg:flex items-center gap-2 xl:gap-3 2xl:gap-4 ml-3 xl:ml-4 2xl:ml-6 min-w-0">
+            <div className="hidden lg:flex flex-1 items-center justify-start gap-2 xl:gap-3 2xl:gap-4 min-w-0">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -106,10 +106,20 @@ export const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
+              {isAdmin ? (
+                <Link
+                  to="/admin"
+                  className={`text-[11px] xl:text-[13px] 2xl:text-sm font-semibold tracking-normal whitespace-nowrap transition-all duration-300 hover:text-primary ${
+                    location.pathname === "/admin" ? "text-primary" : "text-white"
+                  }`}
+                >
+                  Admin Panel
+                </Link>
+              ) : null}
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="hidden lg:flex items-center shrink-0 ml-2 xl:ml-3 2xl:ml-4">
+            <div className="hidden lg:flex items-center shrink-0 ml-auto pl-4 xl:pl-6">
 
               {/* ICON GROUP — clean spacing */}
               <div className="flex items-center gap-0.5 xl:gap-1.5 2xl:gap-2.5">
@@ -221,12 +231,11 @@ export const Navbar = () => {
               <div className="ml-2 xl:ml-3 2xl:ml-4">
                 <Button
                   variant="gold"
-                  className="h-9 xl:h-10 px-3 xl:px-4 2xl:px-5 shrink-0 rounded-xl text-xs xl:text-sm font-semibold shadow-md hover:shadow-yellow-500/20 transition"
+                  className="h-9 xl:h-10 px-3 xl:px-4 2xl:px-5 shrink-0 rounded-xl text-[11px] xl:text-sm font-semibold shadow-md hover:shadow-yellow-500/20 transition"
                   asChild
                 >
                   <Link to="/consultation">
-                    <span className="hidden xl:inline">Book Consultation</span>
-                    <span className="xl:hidden">Book</span>
+                    Book Consultation
                   </Link>
                 </Button>
               </div>
