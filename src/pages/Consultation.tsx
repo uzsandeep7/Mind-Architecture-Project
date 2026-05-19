@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar, Clock, MessageSquare, Video, User, CheckCircle } from "lucide-react";
+import { Calendar, Clock, CreditCard, MessageSquare, Video, User, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +94,20 @@ const getServiceIcon = (slug: string) => {
   if (slug.includes("coaching")) return Video;
   if (slug.includes("strategic")) return Calendar;
   return MessageSquare;
+};
+
+const getFunctionErrorMessage = async (error: unknown, fallback: string) => {
+  const context = typeof error === "object" && error !== null && "context" in error ? error.context : null;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (typeof body?.error === "string") return body.error;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return error instanceof Error ? error.message : fallback;
 };
 
 const ConsultationPage = () => {
@@ -210,6 +224,8 @@ const ConsultationPage = () => {
   const selectedService = services.find((service) => service.id === selectedType);
   const selectedDateBlock = dateBlocks.find((block) => block.id === selectedDate || block.date_value === selectedDate);
   const selectedTimeBlock = timeBlocks.find((block) => block.id === selectedTime || block.time_value === selectedTime);
+  const selectedServicePrice = Number(selectedService?.price ?? 0);
+  const isPaidConsultation = selectedServicePrice > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,7 +250,7 @@ const ConsultationPage = () => {
 
     try {
       const dateTime = new Date(`${selectedDateBlock.date_value}T${selectedTimeBlock.time_value}:00`);
-      const servicePrice = Number(selectedService.price);
+      const servicePrice = selectedServicePrice;
       const messageBody = `${message ? `${message}\n\n` : ""}Requested slot: ${selectedDateBlock.label} ${selectedTimeBlock.label}\nService price: ${servicePrice > 0 ? `$${servicePrice.toFixed(2)}` : "Free"}`;
 
       if (servicePrice > 0) {
@@ -253,7 +269,7 @@ const ConsultationPage = () => {
         });
 
         if (error || !data?.url) {
-          throw error ?? new Error("Failed to open Stripe checkout");
+          throw new Error(await getFunctionErrorMessage(error, "Failed to open Stripe checkout"));
         }
 
         window.location.href = data.url;
@@ -450,9 +466,11 @@ const ConsultationPage = () => {
 
               <div className="flex flex-col gap-4 border-t border-border pt-6 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {selectedService && Number(selectedService.price) > 0
-                    ? "Paid consultation requests go through Stripe test checkout before confirmation."
-                    : "Free discovery calls can be requested directly."}
+                  {selectedService
+                    ? isPaidConsultation
+                      ? `This ${selectedService.title} is $${selectedServicePrice.toFixed(2)} and will open Stripe test checkout before booking is confirmed.`
+                      : "This free consultation can be booked directly without payment."
+                    : "Choose a consultation type to see whether payment is needed."}
                 </p>
                 {!user ? (
                   <Button type="button" variant="gold" size="lg" onClick={() => navigate("/auth")}>
@@ -466,7 +484,16 @@ const ConsultationPage = () => {
                     size="lg"
                     disabled={isSubmitting || !selectedType || !selectedDate || !selectedTime}
                   >
-                    {isSubmitting ? "Saving Consultation..." : "Confirm and Save Consultation"}
+                    {isSubmitting ? (
+                      isPaidConsultation ? "Opening Stripe Checkout..." : "Booking Consultation..."
+                    ) : isPaidConsultation ? (
+                      <>
+                        <CreditCard size={18} className="mr-2" />
+                        Pay Now and Book
+                      </>
+                    ) : (
+                      "Book Consultation"
+                    )}
                   </Button>
                 )}
               </div>
