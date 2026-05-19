@@ -258,6 +258,7 @@ const DashboardPage = () => {
       case "delivered":
         return "text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-400";
       case "pending":
+      case "payment_pending":
         return "text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-400";
       case "cancelled":
         return "text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-400";
@@ -661,7 +662,9 @@ const DashboardPage = () => {
                             <span className="font-medium text-white">Current update:</span>{" "}
                             {consultation.status === "pending"
                               ? "Your request has been received and is waiting for confirmation."
-                              : consultation.status === "confirmed"
+                              : consultation.status === "payment_pending"
+                                ? "Your request is waiting for Stripe payment completion."
+                                : consultation.status === "confirmed"
                                 ? "Your consultation has been approved."
                                 : consultation.status === "completed"
                                   ? "Your consultation has been completed."

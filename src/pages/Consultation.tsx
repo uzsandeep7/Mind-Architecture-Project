@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Calendar, Clock, MessageSquare, Video, User, CheckCircle } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -13,6 +13,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type ConsultationService = Database["public"]["Tables"]["consultation_services"]["Row"];
+type ConsultationDateBlock = Database["public"]["Tables"]["consultation_date_blocks"]["Row"];
 type ConsultationTimeBlock = Database["public"]["Tables"]["consultation_time_blocks"]["Row"];
 
 const fallbackServices: ConsultationService[] = [
@@ -63,6 +64,32 @@ const fallbackTimeBlocks: ConsultationTimeBlock[] = [
   { id: "16:30", label: "4:30 PM", time_value: "16:30", display_order: 6, is_published: true, created_at: "", updated_at: "" },
 ];
 
+const createFallbackDateBlocks = (): ConsultationDateBlock[] => {
+  const dates: ConsultationDateBlock[] = [];
+  const today = new Date();
+  for (let i = 1; i <= 14 && dates.length < 5; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    if (date.getDay() === 0 || date.getDay() === 6) continue;
+
+    const dateValue = date.toISOString().split("T")[0];
+    dates.push({
+      id: dateValue,
+      label: date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      date_value: dateValue,
+      display_order: dates.length + 1,
+      is_published: true,
+      created_at: "",
+      updated_at: "",
+    });
+  }
+  return dates;
+};
+
 const getServiceIcon = (slug: string) => {
   if (slug.includes("coaching")) return Video;
   if (slug.includes("strategic")) return Calendar;
@@ -73,6 +100,7 @@ const ConsultationPage = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [searchParams] = useSearchParams();
   const [services, setServices] = useState<ConsultationService[]>(fallbackServices);
+  const [dateBlocks, setDateBlocks] = useState<ConsultationDateBlock[]>(createFallbackDateBlocks);
   const [timeBlocks, setTimeBlocks] = useState<ConsultationTimeBlock[]>(fallbackTimeBlocks);
   const [selectedType, setSelectedType] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -84,13 +112,49 @@ const ConsultationPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const success = searchParams.get("success");
+    const canceled = searchParams.get("canceled");
+    const sessionId = searchParams.get("session_id");
+    const consultationId = searchParams.get("consultation_id");
+
+    if (canceled === "1") {
+      toast.error("Stripe checkout was cancelled. Your consultation is still pending until payment is completed.");
+      return;
+    }
+
+    if (success === "1" && sessionId && consultationId && user) {
+      const verifyConsultation = async () => {
+        const { error } = await supabase.functions.invoke("verify-consultation-checkout", {
+          body: { sessionId, consultationId },
+        });
+
+        if (error) {
+          toast.error("Payment completed, but consultation confirmation could not be verified yet.");
+          return;
+        }
+
+        setIsBooked(true);
+        toast.success("Payment received. Consultation confirmed!");
+      };
+
+      void verifyConsultation();
+    }
+  }, [searchParams, user]);
+
+  useEffect(() => {
     const loadSetup = async () => {
-      const [servicesResult, timeBlocksResult] = await Promise.all([
+      const [servicesResult, dateBlocksResult, timeBlocksResult] = await Promise.all([
         supabase
           .from("consultation_services")
           .select("*")
           .eq("is_published", true)
           .order("display_order", { ascending: true }),
+        supabase
+          .from("consultation_date_blocks")
+          .select("*")
+          .eq("is_published", true)
+          .order("display_order", { ascending: true })
+          .order("date_value", { ascending: true }),
         supabase
           .from("consultation_time_blocks")
           .select("*")
@@ -100,6 +164,10 @@ const ConsultationPage = () => {
 
       if (!servicesResult.error && servicesResult.data?.length) {
         setServices(servicesResult.data);
+      }
+
+      if (!dateBlocksResult.error && dateBlocksResult.data?.length) {
+        setDateBlocks(dateBlocksResult.data);
       }
 
       if (!timeBlocksResult.error && timeBlocksResult.data?.length) {
@@ -139,20 +207,8 @@ const ConsultationPage = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const availableDates = useMemo(() => {
-    const dates: string[] = [];
-    const today = new Date();
-    for (let i = 1; i <= 14; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      if (date.getDay() !== 0 && date.getDay() !== 6) {
-        dates.push(date.toISOString().split("T")[0]);
-      }
-    }
-    return dates;
-  }, []);
-
   const selectedService = services.find((service) => service.id === selectedType);
+  const selectedDateBlock = dateBlocks.find((block) => block.id === selectedDate || block.date_value === selectedDate);
   const selectedTimeBlock = timeBlocks.find((block) => block.id === selectedTime || block.time_value === selectedTime);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -169,7 +225,7 @@ const ConsultationPage = () => {
       return;
     }
 
-    if (!selectedDate || !selectedTimeBlock) {
+    if (!selectedDateBlock || !selectedTimeBlock) {
       toast.error("Please select date and time");
       return;
     }
@@ -177,21 +233,40 @@ const ConsultationPage = () => {
     setIsSubmitting(true);
 
     try {
-      const dateTime = new Date(`${selectedDate}T${selectedTimeBlock.time_value}:00`);
-      const priceLine =
-        Number(selectedService.price) > 0
-          ? `Requested service price: $${Number(selectedService.price).toFixed(2)}. Payment can be connected through Stripe when live consultation products are configured.`
-          : "Free discovery consultation.";
+      const dateTime = new Date(`${selectedDateBlock.date_value}T${selectedTimeBlock.time_value}:00`);
+      const servicePrice = Number(selectedService.price);
+      const messageBody = `${message ? `${message}\n\n` : ""}Requested slot: ${selectedDateBlock.label} ${selectedTimeBlock.label}\nService price: ${servicePrice > 0 ? `$${servicePrice.toFixed(2)}` : "Free"}`;
 
-      const { error } = await supabase
-        .from("consultations")
-        .insert({
+      if (servicePrice > 0) {
+        const { data, error } = await supabase.functions.invoke("create-consultation-checkout", {
+          body: {
+            consultation: {
+              date: dateTime.toISOString(),
+              topic: `${selectedService.title}${topic ? ` - ${topic}` : ""}`,
+              message: messageBody,
+              serviceTitle: selectedService.title,
+              price: servicePrice,
+            },
+            successUrl: `${window.location.origin}/consultation?success=1&session_id={CHECKOUT_SESSION_ID}`,
+            cancelUrl: `${window.location.origin}/consultation?canceled=1`,
+          },
+        });
+
+        if (error || !data?.url) {
+          throw error ?? new Error("Failed to open Stripe checkout");
+        }
+
+        window.location.href = data.url;
+        return;
+      }
+
+      const { error } = await supabase.from("consultations").insert({
           user_id: user.id,
           date: dateTime.toISOString(),
           topic: `${selectedService.title}${topic ? ` - ${topic}` : ""}`,
-          message: `${message ? `${message}\n\n` : ""}Requested slot: ${selectedDate} ${selectedTimeBlock.label}\n${priceLine}`,
+          message: messageBody,
           status: "pending",
-        });
+      });
 
       if (error) throw error;
 
@@ -304,25 +379,24 @@ const ConsultationPage = () => {
               <div>
                 <h2 className="mb-4 text-xl font-heading font-bold">2. Select Date</h2>
                 <div className="flex flex-wrap gap-2">
-                  {availableDates.map((date) => (
+                  {dateBlocks.map((date) => (
                     <button
-                      key={date}
+                      key={date.id}
                       type="button"
-                      onClick={() => setSelectedDate(date)}
+                      onClick={() => setSelectedDate(date.id)}
                       className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                        selectedDate === date
+                        selectedDate === date.id
                           ? "bg-primary text-primary-foreground"
                           : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
                       }`}
                     >
-                      {new Date(date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {date.label}
                     </button>
                   ))}
                 </div>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Admin can update these date blocks from the dashboard.
+                </p>
               </div>
 
               <div>
@@ -377,7 +451,7 @@ const ConsultationPage = () => {
               <div className="flex flex-col gap-4 border-t border-border pt-6 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-muted-foreground">
                   {selectedService && Number(selectedService.price) > 0
-                    ? "Paid consultation checkout can be connected when Stripe live consultation products are ready."
+                    ? "Paid consultation requests go through Stripe test checkout before confirmation."
                     : "Free discovery calls can be requested directly."}
                 </p>
                 {!user ? (

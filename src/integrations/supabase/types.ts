@@ -281,6 +281,36 @@ export type Database = {
         }
         Relationships: []
       }
+      consultation_date_blocks: {
+        Row: {
+          created_at: string
+          date_value: string
+          display_order: number | null
+          id: string
+          is_published: boolean | null
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date_value: string
+          display_order?: number | null
+          id?: string
+          is_published?: boolean | null
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date_value?: string
+          display_order?: number | null
+          id?: string
+          is_published?: boolean | null
+          label?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       consultation_time_blocks: {
         Row: {
           created_at: string

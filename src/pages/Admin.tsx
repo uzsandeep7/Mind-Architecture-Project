@@ -72,6 +72,7 @@ type ConsultationRow = Database["public"]["Tables"]["consultations"]["Row"];
 type TestimonialRow = Database["public"]["Tables"]["testimonials"]["Row"];
 type GalleryRow = Database["public"]["Tables"]["gallery"]["Row"];
 type ConsultationServiceRow = Database["public"]["Tables"]["consultation_services"]["Row"];
+type ConsultationDateBlockRow = Database["public"]["Tables"]["consultation_date_blocks"]["Row"];
 type ConsultationTimeBlockRow = Database["public"]["Tables"]["consultation_time_blocks"]["Row"];
 
 type OrderItemWithBook = {
@@ -235,6 +236,7 @@ const AdminDashboard = () => {
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [consultations, setConsultations] = useState<ConsultationRow[]>([]);
   const [consultationServices, setConsultationServices] = useState<ConsultationServiceRow[]>([]);
+  const [consultationDateBlocks, setConsultationDateBlocks] = useState<ConsultationDateBlockRow[]>([]);
   const [consultationTimeBlocks, setConsultationTimeBlocks] = useState<ConsultationTimeBlockRow[]>([]);
   const [consultationDrafts, setConsultationDrafts] = useState<Record<string, { date: string; status: string }>>({});
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, { trackingNumber: string; carrier: string }>>({});
@@ -270,6 +272,12 @@ const AdminDashboard = () => {
   const [newConsultationTimeBlock, setNewConsultationTimeBlock] = useState({
     label: "",
     time_value: "",
+    display_order: "0",
+    is_published: true,
+  });
+  const [newConsultationDateBlock, setNewConsultationDateBlock] = useState({
+    label: "",
+    date_value: "",
     display_order: "0",
     is_published: true,
   });
@@ -362,6 +370,7 @@ const AdminDashboard = () => {
         galleryResult,
         consultationsResult,
         consultationServicesResult,
+        consultationDateBlocksResult,
         consultationTimeBlocksResult,
         profilesResult,
         rolesResult,
@@ -379,6 +388,7 @@ const AdminDashboard = () => {
         supabase.from("gallery").select("*").order("display_order", { ascending: true }).order("created_at", { ascending: false }),
         supabase.from("consultations").select("*").order("created_at", { ascending: false }),
         supabase.from("consultation_services").select("*").order("display_order", { ascending: true }),
+        supabase.from("consultation_date_blocks").select("*").order("display_order", { ascending: true }).order("date_value", { ascending: true }),
         supabase.from("consultation_time_blocks").select("*").order("display_order", { ascending: true }),
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*"),
@@ -424,6 +434,10 @@ const AdminDashboard = () => {
 
       if (consultationServicesResult.error) {
         console.warn("Failed to load consultation services. Apply the consultation setup migration in Supabase.", consultationServicesResult.error);
+      }
+
+      if (consultationDateBlocksResult.error) {
+        console.warn("Failed to load consultation date blocks. Apply the consultation date migration in Supabase.", consultationDateBlocksResult.error);
       }
 
       if (consultationTimeBlocksResult.error) {
@@ -491,6 +505,7 @@ const AdminDashboard = () => {
       setGalleryItems(galleryResult.error ? [] : galleryResult.data ?? []);
       setConsultations(consultationsResult.data ?? []);
       setConsultationServices(consultationServicesResult.error ? [] : consultationServicesResult.data ?? []);
+      setConsultationDateBlocks(consultationDateBlocksResult.error ? [] : consultationDateBlocksResult.data ?? []);
       setConsultationTimeBlocks(consultationTimeBlocksResult.error ? [] : consultationTimeBlocksResult.data ?? []);
       setConsultationDrafts(
         Object.fromEntries(
@@ -1045,7 +1060,7 @@ const AdminDashboard = () => {
   };
 
   const deleteContent = async (
-    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery" | "orders" | "consultations" | "contact_messages" | "consultation_services" | "consultation_time_blocks",
+    table: "events" | "books" | "blog_posts" | "testimonials" | "gallery" | "orders" | "consultations" | "contact_messages" | "consultation_services" | "consultation_date_blocks" | "consultation_time_blocks",
     id: string,
     label: string,
   ) => {
@@ -1124,6 +1139,12 @@ const AdminDashboard = () => {
       return;
     }
 
+    const displayOrder = Number(newConsultationService.display_order) || 0;
+    if (consultationServices.some((service) => Number(service.display_order) === displayOrder)) {
+      toast.error("This service display order is already used. Please choose another number.");
+      return;
+    }
+
     try {
       const { error } = await supabase.from("consultation_services").insert({
         slug: slugify(newConsultationService.slug),
@@ -1131,7 +1152,7 @@ const AdminDashboard = () => {
         description: newConsultationService.description.trim() || "Consultation service",
         duration_minutes: Number(newConsultationService.duration_minutes) || 30,
         price: Number(newConsultationService.price) || 0,
-        display_order: Number(newConsultationService.display_order) || 0,
+        display_order: displayOrder,
         is_published: newConsultationService.is_published,
       });
 
@@ -1162,6 +1183,14 @@ const AdminDashboard = () => {
     const numericFields = ["duration_minutes", "price", "display_order"];
     const nextValue = numericFields.includes(field) ? Number(value) || 0 : value;
 
+    if (
+      field === "display_order" &&
+      consultationServices.some((item) => item.id !== service.id && Number(item.display_order) === Number(nextValue))
+    ) {
+      toast.error("This service display order is already used. Please choose another number.");
+      return;
+    }
+
     const { error } = await supabase
       .from("consultation_services")
       .update({ [field]: nextValue })
@@ -1181,11 +1210,17 @@ const AdminDashboard = () => {
       return;
     }
 
+    const displayOrder = Number(newConsultationTimeBlock.display_order) || 0;
+    if (consultationTimeBlocks.some((block) => Number(block.display_order) === displayOrder)) {
+      toast.error("This time block display order is already used. Please choose another number.");
+      return;
+    }
+
     try {
       const { error } = await supabase.from("consultation_time_blocks").insert({
         label: newConsultationTimeBlock.label.trim(),
         time_value: newConsultationTimeBlock.time_value.trim(),
-        display_order: Number(newConsultationTimeBlock.display_order) || 0,
+        display_order: displayOrder,
         is_published: newConsultationTimeBlock.is_published,
       });
 
@@ -1212,6 +1247,14 @@ const AdminDashboard = () => {
   ) => {
     const nextValue = field === "display_order" ? Number(value) || 0 : value;
 
+    if (
+      field === "display_order" &&
+      consultationTimeBlocks.some((item) => item.id !== block.id && Number(item.display_order) === Number(nextValue))
+    ) {
+      toast.error("This time block display order is already used. Please choose another number.");
+      return;
+    }
+
     const { error } = await supabase
       .from("consultation_time_blocks")
       .update({ [field]: nextValue })
@@ -1219,6 +1262,70 @@ const AdminDashboard = () => {
 
     if (error) {
       toast.error("Failed to update time block");
+      return;
+    }
+
+    await loadAdminData();
+  };
+
+  const saveConsultationDateBlock = async () => {
+    if (!newConsultationDateBlock.label.trim() || !newConsultationDateBlock.date_value.trim()) {
+      toast.error("Please add a date label and date.");
+      return;
+    }
+
+    const displayOrder = Number(newConsultationDateBlock.display_order) || 0;
+    if (consultationDateBlocks.some((block) => Number(block.display_order) === displayOrder)) {
+      toast.error("This date block display order is already used. Please choose another number.");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("consultation_date_blocks").insert({
+        label: newConsultationDateBlock.label.trim(),
+        date_value: newConsultationDateBlock.date_value,
+        display_order: displayOrder,
+        is_published: newConsultationDateBlock.is_published,
+      });
+
+      if (error) throw error;
+
+      toast.success("Consultation date block added");
+      setNewConsultationDateBlock({
+        label: "",
+        date_value: "",
+        display_order: "0",
+        is_published: true,
+      });
+      await loadAdminData();
+    } catch (error) {
+      console.error("Failed to save consultation date block:", error);
+      toast.error(getErrorMessage(error) || "Failed to save consultation date block");
+    }
+  };
+
+  const updateConsultationDateBlock = async (
+    block: ConsultationDateBlockRow,
+    field: "label" | "date_value" | "display_order" | "is_published",
+    value: string | boolean,
+  ) => {
+    const nextValue = field === "display_order" ? Number(value) || 0 : value;
+
+    if (
+      field === "display_order" &&
+      consultationDateBlocks.some((item) => item.id !== block.id && Number(item.display_order) === Number(nextValue))
+    ) {
+      toast.error("This date block display order is already used. Please choose another number.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("consultation_date_blocks")
+      .update({ [field]: nextValue })
+      .eq("id", block.id);
+
+    if (error) {
+      toast.error("Failed to update date block");
       return;
     }
 
@@ -3237,6 +3344,55 @@ const AdminDashboard = () => {
                   </div>
 
                   <div>
+                    <h4 className="mb-3 font-medium">Available Date Blocks</h4>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {consultationDateBlocks.map((block) => (
+                        <div key={block.id} className="rounded-lg border border-border p-4 space-y-3">
+                          <Input
+                            value={block.label}
+                            onChange={(e) => void updateConsultationDateBlock(block, "label", e.target.value)}
+                          />
+                          <Input
+                            type="date"
+                            value={block.date_value}
+                            onChange={(e) => void updateConsultationDateBlock(block, "date_value", e.target.value)}
+                          />
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="number"
+                              value={block.display_order ?? 0}
+                              onChange={(e) => void updateConsultationDateBlock(block, "display_order", e.target.value)}
+                            />
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(block.is_published)}
+                                onChange={(e) => void updateConsultationDateBlock(block, "is_published", e.target.checked)}
+                              />
+                              Published
+                            </label>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-destructive"
+                            onClick={() => void deleteContent("consultation_date_blocks", block.id, "Date block")}
+                          >
+                            <Trash2 size={16} />
+                            Delete Date
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 grid gap-3 rounded-lg border border-dashed border-border p-4 md:grid-cols-[1fr,1fr,120px,auto]">
+                      <Input placeholder="Label e.g. Mon, May 25" value={newConsultationDateBlock.label} onChange={(e) => setNewConsultationDateBlock((p) => ({ ...p, label: e.target.value }))} />
+                      <Input type="date" value={newConsultationDateBlock.date_value} onChange={(e) => setNewConsultationDateBlock((p) => ({ ...p, date_value: e.target.value }))} />
+                      <Input type="number" placeholder="Order" value={newConsultationDateBlock.display_order} onChange={(e) => setNewConsultationDateBlock((p) => ({ ...p, display_order: e.target.value }))} />
+                      <Button variant="gold" onClick={() => void saveConsultationDateBlock()}>Add Date</Button>
+                    </div>
+                  </div>
+
+                  <div>
                     <h4 className="mb-3 font-medium">Available Time Blocks</h4>
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
                       {consultationTimeBlocks.map((block) => (
@@ -3357,6 +3513,7 @@ const AdminDashboard = () => {
                                   }
                                 >
                                   <option value="pending">Pending</option>
+                                  <option value="payment_pending">Payment Pending</option>
                                   <option value="confirmed">Confirmed</option>
                                   <option value="completed">Completed</option>
                                   <option value="cancelled">Cancelled</option>
