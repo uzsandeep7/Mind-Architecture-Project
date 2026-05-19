@@ -131,42 +131,33 @@ const BlogPostPage = () => {
 
     setIsPostingComment(true);
 
-    const commentContent = newComment.trim();
-    const { data, error } = await supabase
+    const commentText = newComment.trim();
+
+    const { error } = await supabase
       .from("blog_comments")
       .insert({
         post_id: post.id,
         user_id: currentUser.id,
-        content: commentContent,
-      })
-      .select("id, content, created_at, user_id")
-      .single();
+        content: commentText,
+      });
 
     setIsPostingComment(false);
 
-    if (error || !data) {
+    if (error) {
       toast({
         title: "Could not post comment",
-        description: error?.message || "Please try again.",
+        description: error.message,
         variant: "destructive",
       });
       return;
     }
 
-    setComments((current) => [
-      {
-        ...data,
-        profile: {
-          full_name:
-            authUser?.user_metadata?.full_name ||
-            authUser?.user_metadata?.name ||
-            authUser?.email?.split("@")[0] ||
-            "You",
-        },
-      },
-      ...current,
-    ]);
+    // Clear input field
     setNewComment("");
+
+    // Reload comments from Supabase
+    await fetchComments(post.id);
+
     toast({
       title: "Comment added",
       description: "Your comment has been posted successfully.",
