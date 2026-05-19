@@ -9,7 +9,6 @@ import {
   LogOut,
   ShoppingCart,
   LayoutDashboard,
-  Settings,
   Crown,
 } from "lucide-react";
 
@@ -66,10 +65,7 @@ export const Navbar = () => {
 
   return (
     <>
-      <motion.header
-        initial={{ y: -80 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.4 }}
+      <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           isScrolled
             ? "bg-black/90 backdrop-blur-md shadow-lg border-b border-white/10"
@@ -92,7 +88,7 @@ export const Navbar = () => {
             </Link>
 
             {/* NAV LINKS */}
-            <div className="hidden lg:flex flex-1 items-center justify-start gap-2 xl:gap-3 2xl:gap-4 min-w-0">
+            <div className="hidden lg:flex flex-1 items-center justify-end gap-2 xl:gap-3 2xl:gap-4 min-w-0">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -119,7 +115,7 @@ export const Navbar = () => {
             </div>
 
             {/* RIGHT SIDE */}
-            <div className="hidden lg:flex items-center shrink-0 ml-auto pl-4 xl:pl-6">
+            <div className="hidden lg:flex items-center shrink-0 pl-4 xl:pl-5">
 
               {/* ICON GROUP — clean spacing */}
               <div className="flex items-center gap-0.5 xl:gap-1.5 2xl:gap-2.5">
@@ -201,15 +197,6 @@ export const Navbar = () => {
                       </Link>
                     </DropdownMenuItem>
 
-                    {isAdmin && (
-                      <DropdownMenuItem asChild>
-                        <Link to="/admin" className="flex gap-2">
-                          <Settings className="w-4 h-4" />
-                          Admin Panel
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
-
                     {user ? (
                       <DropdownMenuItem
                         onClick={handleSignOut}
@@ -254,7 +241,7 @@ export const Navbar = () => {
 
           </div>
         </nav>
-      </motion.header>
+      </header>
 
       {/* MOBILE MENU */}
       <AnimatePresence>
