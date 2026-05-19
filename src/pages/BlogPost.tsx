@@ -97,13 +97,7 @@ const BlogPostPage = () => {
   const fetchComments = async (postId: string) => {
     const { data, error } = await supabase
       .from("blog_comments")
-      .select(`
-        id,
-        content,
-        created_at,
-        user_id,
-        profiles:user_id (full_name)
-      `)
+      .select("id, content, created_at, user_id")
       .eq("post_id", postId)
       .order("created_at", { ascending: false });
 
@@ -113,10 +107,29 @@ const BlogPostPage = () => {
       return;
     }
 
+    const userIds = [...new Set((data ?? []).map((comment) => comment.user_id))];
+    const { data: profilesData, error: profilesError } =
+      userIds.length > 0
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name")
+            .in("id", userIds)
+        : { data: [], error: null };
+
+    if (profilesError) {
+      console.warn("Failed to load comment profile names:", profilesError);
+    }
+
+    const profilesByUserId = new Map(
+      (profilesData ?? []).map((profile) => [profile.id, profile.full_name]),
+    );
+
     setComments(
       (data ?? []).map((comment) => ({
         ...comment,
-        profile: Array.isArray(comment.profiles) ? comment.profiles[0] : comment.profiles,
+        profile: {
+          full_name: profilesByUserId.get(comment.user_id) ?? null,
+        },
       })),
     );
   };
