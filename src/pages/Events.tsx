@@ -61,7 +61,7 @@ const EventCard = ({
       transition={{ duration: 0.5, delay: index * 0.1 }}
       className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card shadow-soft hover-lift"
     >
-      <Link to={`/events/${event.id}`}>
+      <Link to={`/programs/${event.id}`}>
         <div className="relative h-56 overflow-hidden">
           <img
             src={event.image_url || "/placeholder.svg"}
@@ -72,7 +72,7 @@ const EventCard = ({
           <div className="absolute top-4 left-4">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                Live Event
+                Live Program
               </span>
               {event.is_members_only ? (
                 <span className="flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-black">
@@ -101,7 +101,7 @@ const EventCard = ({
       </Link>
 
       <div className="flex flex-1 flex-col p-6">
-        <Link to={`/events/${event.id}`}>
+        <Link to={`/programs/${event.id}`}>
           <h3 className="mb-2 text-xl font-heading font-bold transition-colors group-hover:text-primary">
             {event.title}
           </h3>
@@ -179,7 +179,7 @@ const EventCard = ({
                     ? "/membership"
                     : "/auth"
                   : isLoggedIn
-                    ? `/events/${event.id}`
+                    ? `/programs/${event.id}`
                     : "/auth"
               }
             >
@@ -190,7 +190,7 @@ const EventCard = ({
                 </>
               ) : (
                 <>
-                  {isLoggedIn ? "Book Event" : "Sign In to Book"}
+                  {isLoggedIn ? "Book Program" : "Sign In to Book"}
                   <ArrowRight size={14} />
                 </>
               )}
@@ -252,13 +252,13 @@ const EventsPage = () => {
       <section className="bg-gradient-hero pb-16 pt-32 text-cream">
         <div className="container-wide">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
-            <span className="text-sm font-medium uppercase tracking-widest text-primary">Live Events</span>
+            <span className="text-sm font-medium uppercase tracking-widest text-primary">Live Programs</span>
             <h1 className="mb-6 mt-4 text-4xl font-heading font-bold md:text-5xl lg:text-6xl">
               Explore Upcoming
-              <span className="text-gradient-gold"> MIND Architecture Events</span>
+              <span className="text-gradient-gold"> MIND Architecture Programs</span>
             </h1>
             <p className="text-lg text-cream/70">
-              Explore upcoming MIND Architecture events and programs.
+              Explore upcoming MIND Architecture programs and experiences.
             </p>
           </motion.div>
         </div>
@@ -286,7 +286,7 @@ const EventsPage = () => {
             <div className="relative w-full md:w-64">
               <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search events..."
+                placeholder="Search programs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -299,7 +299,7 @@ const EventsPage = () => {
       <section className="section-padding bg-background">
         <div className="container-wide">
           {isLoading ? (
-            <div className="py-16 text-center text-lg text-muted-foreground">Loading events...</div>
+            <div className="py-16 text-center text-lg text-muted-foreground">Loading programs...</div>
           ) : filteredEvents.length > 0 ? (
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {filteredEvents.map((event, index) => (
@@ -314,7 +314,7 @@ const EventsPage = () => {
             </div>
           ) : (
             <div className="py-16 text-center">
-              <p className="text-lg text-muted-foreground">No live events available right now.</p>
+              <p className="text-lg text-muted-foreground">No live programs available right now.</p>
             </div>
           )}
         </div>

@@ -81,7 +81,7 @@ export const PaymentSuccessDialog = ({
           {type === "event" && (
             <div className="bg-secondary/50 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Event</span>
+                <span className="text-muted-foreground">Program</span>
                 <span className="font-medium">{eventTitle}</span>
               </div>
               <div className="flex items-center justify-between">

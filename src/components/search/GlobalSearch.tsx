@@ -56,15 +56,15 @@ const pageResults: SearchResult[] = [
     id: "page-programs",
     type: "page",
     title: "Programs",
-    description: "Browse live events and in-person experiences",
-    url: "/events",
+    description: "Browse live programs and in-person experiences",
+    url: "/programs",
     icon: Calendar,
     keywords: ["programs", "events", "workshops", "bookings"],
   },
   {
-    id: "page-resources",
+    id: "page-books",
     type: "page",
-    title: "Resources",
+    title: "Books",
     description: "Explore books and learning materials",
     url: "/books",
     icon: BookOpen,
@@ -75,7 +75,7 @@ const pageResults: SearchResult[] = [
     type: "page",
     title: "Insights",
     description: "Read articles, ideas, and member insights",
-    url: "/blog",
+    url: "/insights",
     icon: FileText,
     keywords: ["insights", "blog", "articles", "posts"],
   },
@@ -161,7 +161,7 @@ const getSearchScore = (item: SearchResult, rawQuery: string) => {
 const getTypeLabel = (type: SearchResultType) => {
   switch (type) {
     case "event":
-      return "Event";
+      return "Program";
     case "book":
       return "Book";
     case "blog":
@@ -253,7 +253,7 @@ export const GlobalSearch = ({ isOpen, onClose }: GlobalSearchProps) => {
           type: "event",
           title: event.title,
           description: `${event.venue} - ${formattedDate}`,
-          url: `/events/${event.id}`,
+          url: `/programs/${event.id}`,
           icon: Calendar,
           keywords: [event.venue, event.description ?? "", "event", "program"].filter(Boolean),
         };
@@ -263,7 +263,7 @@ export const GlobalSearch = ({ isOpen, onClose }: GlobalSearchProps) => {
         id: `book-${book.id}`,
         type: "book",
         title: book.title,
-        description: book.description || `${book.category || "Book"} available on the resources page`,
+        description: book.description || `${book.category || "Book"} available on the books page`,
         url: "/books",
         icon: BookOpen,
         keywords: [book.category ?? "", book.description ?? "", "book", "resource"].filter(Boolean),
@@ -274,7 +274,7 @@ export const GlobalSearch = ({ isOpen, onClose }: GlobalSearchProps) => {
         type: "blog",
         title: post.title,
         description: post.excerpt || "Open the article to read more",
-        url: `/blog/${post.slug}`,
+        url: `/insights/${post.slug}`,
         icon: FileText,
         keywords: [...(post.tags ?? []), post.excerpt ?? "", "blog", "insight", "article"].filter(Boolean),
       }));
@@ -360,7 +360,7 @@ export const GlobalSearch = ({ isOpen, onClose }: GlobalSearchProps) => {
                 <Input
                   ref={inputRef}
                   type="text"
-                  placeholder="Type to search pages, events, books, and articles..."
+                  placeholder="Type to search pages, programs, books, and insights..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}

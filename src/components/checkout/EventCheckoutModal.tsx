@@ -92,8 +92,8 @@ export const EventCheckoutModal = ({
     setIsProcessing(true);
 
     try {
-      const successUrl = `${window.location.origin}/events/${event.id}?success=1&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${window.location.origin}/events/${event.id}?canceled=1`;
+      const successUrl = `${window.location.origin}/programs/${event.id}?success=1&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/programs/${event.id}?canceled=1`;
 
       const { data, error } = await supabase.functions.invoke("create-event-checkout", {
         body: {
@@ -156,7 +156,7 @@ export const EventCheckoutModal = ({
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             )}
-            {step === "details" ? "Book Your Seat" : step === "attendees" ? "Attendee Details" : "Stripe Event Checkout"}
+            {step === "details" ? "Book Your Seat" : step === "attendees" ? "Attendee Details" : "Stripe Program Checkout"}
           </DialogTitle>
         </DialogHeader>
 
@@ -326,7 +326,7 @@ export const EventCheckoutModal = ({
                     <ExternalLink size={18} />
                   </div>
                   <div>
-                    <p className="font-medium">Stripe Hosted Event Checkout</p>
+                    <p className="font-medium">Stripe Hosted Program Checkout</p>
                     <p className="text-sm text-muted-foreground">
                       You&apos;ll be redirected to Stripe&apos;s secure checkout page to complete this event booking.
                     </p>

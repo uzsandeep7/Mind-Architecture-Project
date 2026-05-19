@@ -23,7 +23,7 @@ const freeFeatures = [
   "Book free discovery consultations",
   "Browse public programs and resources",
   "Purchase books and public resources at standard price",
-  "Track orders, consultations, and event bookings",
+  "Track orders, consultations, and program bookings",
 ];
 
 const freeRestrictions = [
@@ -45,7 +45,7 @@ const comparisonTable = [
   { feature: "Registration & Login", free: true, premium: true },
   { feature: "Book Consultations", free: true, premium: true },
   { feature: "Public Programs", free: "Standard price", premium: "Member price when available" },
-  { feature: "Books & Resources", free: "Standard price", premium: "Member price when available" },
+  { feature: "Books", free: "Standard price", premium: "Member price when available" },
   { feature: "Premium-only Listings", free: false, premium: true },
   { feature: "Order & Booking Dashboard", free: true, premium: true },
   { feature: "Stripe Billing Portal", free: false, premium: true },

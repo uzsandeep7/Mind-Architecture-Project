@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "@/contexts/CartContext";
 
 import Index from "./pages/Index";
@@ -82,13 +82,17 @@ const App = () => {
             <RouteErrorBoundary>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/events" element={<Events />} />
+                <Route path="/programs" element={<Events />} />
+                <Route path="/programs/:id" element={<EventDetail />} />
+                <Route path="/events" element={<Navigate to="/programs" replace />} />
                 <Route path="/events/:id" element={<EventDetail />} />
                 <Route path="/books" element={<Books />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/testimonials" element={<Testimonials />} />
                 <Route path="/contact" element={<Contact />} />
-                <Route path="/blog" element={<Blog />} />
+                <Route path="/insights" element={<Blog />} />
+                <Route path="/insights/:slug" element={<BlogPost />} />
+                <Route path="/blog" element={<Navigate to="/insights" replace />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/gallery" element={<Gallery />} />

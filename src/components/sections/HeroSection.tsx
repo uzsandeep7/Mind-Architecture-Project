@@ -69,7 +69,7 @@ export const HeroSection = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="flex flex-wrap gap-4"
           >
-            <Link to="/events">
+            <Link to="/programs">
               <Button variant="hero" className="gap-2">
                 Explore Programs
                 <ArrowRight size={18} />

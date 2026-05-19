@@ -644,7 +644,7 @@ const AdminDashboard = () => {
         highlight: true,
       },
       {
-        label: "Total Events",
+        label: "Total Programs",
         value: events.length.toLocaleString(),
         icon: Calendar,
         detail: `${events.filter((event) => event.is_published).length} published`,
@@ -857,7 +857,7 @@ const AdminDashboard = () => {
       const { error } = await query;
       if (error) throw error;
 
-      toast.success(editingEventId ? "Event updated" : "Event created");
+      toast.success(editingEventId ? "Program updated" : "Program created");
       resetEventForm();
       await loadAdminData();
     } catch (error) {
@@ -913,7 +913,7 @@ const AdminDashboard = () => {
 
   const savePost = async () => {
     if (!newPost.title.trim() || !newPost.content.trim()) {
-      toast.error("Please complete the required blog fields");
+      toast.error("Please complete the required insight fields");
       return;
     }
 
@@ -941,13 +941,13 @@ const AdminDashboard = () => {
       const { error } = await query;
       if (error) throw error;
 
-      toast.success(editingPostId ? "Blog post updated" : "Blog post created");
+      toast.success(editingPostId ? "Insight updated" : "Insight created");
       resetPostForm();
       await loadAdminData();
     } catch (error) {
-      console.error("Failed to save blog post:", error);
+      console.error("Failed to save insight:", error);
       const message = getErrorMessage(error) || "Unknown error";
-      toast.error(`Failed to save blog post: ${message}`);
+      toast.error(`Failed to save insight: ${message}`);
     } finally {
       setIsSavingPost(false);
     }
@@ -1671,12 +1671,12 @@ const AdminDashboard = () => {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Event Bookings Chart */}
+            {/* Program Bookings Chart */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Activity className="w-5 h-5 text-primary" />
-                  Event Bookings
+                  Program Bookings
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1710,7 +1710,7 @@ const AdminDashboard = () => {
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
-                      No events available yet.
+                      No programs available yet.
                     </div>
                   )}
                 </div>
@@ -1783,7 +1783,7 @@ const AdminDashboard = () => {
             <TabsList className="flex flex-wrap gap-2">
               <TabsTrigger value="events">
                 <Calendar className="w-4 h-4 mr-1" />
-                Events
+                Programs
               </TabsTrigger>
               <TabsTrigger value="books">
                 <BookOpen className="w-4 h-4 mr-1" />
@@ -1795,7 +1795,7 @@ const AdminDashboard = () => {
               </TabsTrigger>
               <TabsTrigger value="blog">
                 <FileText className="w-4 h-4 mr-1" />
-                Blog
+                Insights
               </TabsTrigger>
               <TabsTrigger value="testimonials">
                 <Star className="w-4 h-4 mr-1" />
@@ -1829,11 +1829,11 @@ const AdminDashboard = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Events Tab */}
+            {/* Programs Tab */}
             <TabsContent value="events">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Manage Events</CardTitle>
+                  <CardTitle>Manage Programs</CardTitle>
                   <Dialog
                     open={isEventDialogOpen}
                     onOpenChange={(open) => {
@@ -1850,12 +1850,12 @@ const AdminDashboard = () => {
                           setIsEventDialogOpen(true);
                         }}
                       >
-                        <Plus size={16} className="mr-1" /> Add Event
+                        <Plus size={16} className="mr-1" /> Add Program
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
                       <DialogHeader>
-                        <DialogTitle>{editingEventId ? "Edit Event" : "Create New Event"}</DialogTitle>
+                        <DialogTitle>{editingEventId ? "Edit Program" : "Create New Program"}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 pr-1">
                         <div>
@@ -2006,7 +2006,7 @@ const AdminDashboard = () => {
                             <Label>Preview</Label>
                             <img
                               src={newEvent.image_url}
-                              alt="Event preview"
+                              alt="Program preview"
                               className="h-32 w-full rounded-md border border-border object-cover"
                             />
                           </div>
@@ -2045,7 +2045,7 @@ const AdminDashboard = () => {
                             disabled={isSavingEvent || uploadingField === "event-image"}
                           >
                             {isSavingEvent || uploadingField === "event-image" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                            {editingEventId ? "Save Event" : "Create Event"}
+                            {editingEventId ? "Save Program" : "Create Program"}
                           </Button>
                           {editingEventId ? (
                             <Button variant="outline" className="w-full" onClick={resetEventForm}>
@@ -2139,7 +2139,7 @@ const AdminDashboard = () => {
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => void deleteContent("events", event.id, "Event")}
+                            onClick={() => void deleteContent("events", event.id, "Program")}
                           >
                             <Trash2 size={16} />
                           </Button>
@@ -2202,7 +2202,7 @@ const AdminDashboard = () => {
                     })}
                     {events.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        No events yet. Add your first event here, then manage it from this list with edit, hide, or delete.
+                        No programs yet. Add your first program here, then manage it from this list with edit, hide, or delete.
                       </div>
                     ) : null}
                   </div>
@@ -2671,11 +2671,11 @@ const AdminDashboard = () => {
               </Card>
             </TabsContent>
 
-            {/* Blog Tab */}
+            {/* Insights Tab */}
             <TabsContent value="blog">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Blog Posts</CardTitle>
+                  <CardTitle>Insights</CardTitle>
                   <Dialog
                     open={isPostDialogOpen}
                     onOpenChange={(open) => {
@@ -2697,7 +2697,7 @@ const AdminDashboard = () => {
                     </DialogTrigger>
                     <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
                       <DialogHeader>
-                        <DialogTitle>{editingPostId ? "Edit Blog Post" : "Create Blog Post"}</DialogTitle>
+                        <DialogTitle>{editingPostId ? "Edit Insight" : "Create Insight"}</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4 pr-1">
                         <div>
@@ -2738,7 +2738,7 @@ const AdminDashboard = () => {
                             }
                           />
                           <p className="mt-1 text-xs text-muted-foreground">
-                            Paste an image URL or upload a blog cover image from your computer.
+                            Paste an image URL or upload an insight cover image from your computer.
                           </p>
                         </div>
                         {newPost.cover_image_url ? (
@@ -2746,7 +2746,7 @@ const AdminDashboard = () => {
                             <Label>Preview</Label>
                             <img
                               src={newPost.cover_image_url}
-                              alt="Blog cover preview"
+                              alt="Insight cover preview"
                               className="h-32 w-full rounded-md border border-border object-cover"
                             />
                           </div>
@@ -2839,7 +2839,7 @@ const AdminDashboard = () => {
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => void deleteContent("blog_posts", post.id, "Blog post")}
+                            onClick={() => void deleteContent("blog_posts", post.id, "Insight")}
                           >
                             <Trash2 size={16} />
                           </Button>
@@ -2848,7 +2848,7 @@ const AdminDashboard = () => {
                     ))}
                     {blogPosts.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                        No blog posts yet. Create one here and it will appear in this list for editing, hiding, or deleting.
+                        No insights yet. Create one here and it will appear in this list for editing, hiding, or deleting.
                       </div>
                     ) : null}
                   </div>
@@ -3115,7 +3115,7 @@ const AdminDashboard = () => {
                             <Input
                               value={newGalleryItem.category}
                               onChange={(e) => setNewGalleryItem((p) => ({ ...p, category: e.target.value }))}
-                              placeholder="Workshop, Event, Speaking"
+                              placeholder="Workshop, Program, Speaking"
                             />
                           </div>
                         </div>

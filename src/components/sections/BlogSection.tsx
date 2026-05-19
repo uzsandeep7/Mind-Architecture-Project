@@ -53,10 +53,10 @@ export const BlogSection = () => {
             Core Insights
           </Badge>
           <h2 className="mb-4 text-4xl font-heading font-bold md:text-5xl">
-            Resilience Resources
+            Resilience Insights
           </h2>
           <p className="mx-auto max-w-3xl text-lg text-muted-foreground">
-            This homepage section only appears when live blog posts have been added from the backend.
+            This homepage section only appears when live insights have been added from the admin dashboard.
           </p>
         </motion.div>
 
@@ -70,7 +70,7 @@ export const BlogSection = () => {
               viewport={{ once: true }}
               className="group overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
             >
-              <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`}>
+              <Link to={post.is_members_only && !isMember ? "/membership" : `/insights/${post.slug}`}>
                 <div className="relative aspect-video overflow-hidden bg-muted">
                   <img
                     src={post.cover_image_url || "/placeholder.svg"}
@@ -97,7 +97,7 @@ export const BlogSection = () => {
                   ))}
                 </div>
 
-                <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`}>
+                <Link to={post.is_members_only && !isMember ? "/membership" : `/insights/${post.slug}`}>
                   <h3 className="mb-3 text-xl font-heading font-semibold transition-colors group-hover:text-primary">
                     {post.title}
                   </h3>
@@ -112,7 +112,7 @@ export const BlogSection = () => {
                     <Clock className="h-4 w-4" />
                     {post.read_time_minutes || 5} min read
                   </span>
-                  <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`} className="inline-flex items-center gap-2 font-medium text-primary transition-all hover:gap-3">
+                  <Link to={post.is_members_only && !isMember ? "/membership" : `/insights/${post.slug}`} className="inline-flex items-center gap-2 font-medium text-primary transition-all hover:gap-3">
                     {post.is_members_only && !isMember ? (
                       <>
                         <Lock className="h-4 w-4" />
@@ -137,8 +137,8 @@ export const BlogSection = () => {
           className="text-center"
         >
           <Button variant="goldOutline" size="lg" asChild>
-            <Link to="/blog">
-              Explore All Resources
+            <Link to="/insights">
+              Explore All Insights
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

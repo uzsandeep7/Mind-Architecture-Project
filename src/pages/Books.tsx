@@ -213,7 +213,7 @@ const BooksPage = () => {
               <span className="text-gradient-gold"> Your Hands</span>
             </h1>
             <p className="text-lg text-cream/70">
-              Explore books and resources curated for Mind Architecture readers.
+              Explore books curated for Mind Architecture readers.
             </p>
           </motion.div>
         </div>

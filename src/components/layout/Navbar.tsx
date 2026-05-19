@@ -29,11 +29,11 @@ import {
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
-  { href: "/events", label: "Programs" },
-  { href: "/books", label: "Resources" },
+  { href: "/programs", label: "Programs" },
+  { href: "/books", label: "Books" },
   { href: "/gallery", label: "Gallery" },
   { href: "/testimonials", label: "Testimonials" },
-  { href: "/blog", label: "Insights" },
+  { href: "/insights", label: "Insights" },
   { href: "/membership", label: "Membership" },
   { href: "/contact", label: "Contact" },
 ];

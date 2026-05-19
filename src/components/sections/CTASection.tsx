@@ -38,7 +38,7 @@ export const CTASection = () => {
                 Book Consultation
               </Button>
             </Link>
-            <Link to="/events">
+            <Link to="/programs">
               <Button variant="heroOutline" size="xl" className="w-full sm:w-auto">
                 Explore Programs
                 <ArrowRight size={20} />

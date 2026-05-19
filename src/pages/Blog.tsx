@@ -71,9 +71,9 @@ const Blog = () => {
             <Badge variant="outline" className="mb-4 border-primary/50 text-primary">
               Insights & Inspiration
             </Badge>
-            <h1 className="mb-6 text-4xl font-heading font-bold md:text-6xl">The Blog</h1>
+            <h1 className="mb-6 text-4xl font-heading font-bold md:text-6xl">Insights</h1>
             <p className="text-lg text-muted-foreground">
-              Explore fresh articles and resources from the Mind Architecture library.
+              Explore fresh insights and articles from the Mind Architecture library.
             </p>
           </motion.div>
         </div>
@@ -125,7 +125,7 @@ const Blog = () => {
                   viewport={{ once: true }}
                   className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-all duration-300 hover:border-primary/50 hover:shadow-xl"
                 >
-                      <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`}>
+                      <Link to={post.is_members_only && !isMember ? "/membership" : `/insights/${post.slug}`}>
                         <div className="relative aspect-video overflow-hidden bg-muted">
                           <img
                             src={post.cover_image_url || "/placeholder.svg"}
@@ -150,7 +150,7 @@ const Blog = () => {
                         </Badge>
                       ))}
                     </div>
-                    <Link to={post.is_members_only && !isMember ? "/membership" : `/blog/${post.slug}`}>
+                    <Link to={post.is_members_only && !isMember ? "/membership" : `/insights/${post.slug}`}>
                       <h3 className="mb-2 line-clamp-2 text-xl font-heading font-semibold transition-colors group-hover:text-primary">
                         {post.title}
                       </h3>

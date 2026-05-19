@@ -132,7 +132,7 @@ const EventCard = ({ event, index, isMember }: { event: EventItem; index: number
             )}
           </div>
           <Button variant={event.is_members_only && !isMember ? "outline" : "gold"} size="sm" asChild>
-            <Link to={event.is_members_only && !isMember ? "/membership" : `/events/${event.id}`}>
+            <Link to={event.is_members_only && !isMember ? "/membership" : `/programs/${event.id}`}>
               {event.is_members_only && !isMember ? (
                 <>
                   <Lock size={14} />
@@ -179,12 +179,12 @@ export const EventsSection = () => {
           viewport={{ once: true }}
           className="mb-12 text-center"
         >
-          <span className="text-sm font-medium uppercase tracking-widest text-primary">Upcoming Events</span>
+          <span className="text-sm font-medium uppercase tracking-widest text-primary">Upcoming Programs</span>
           <h2 className="mb-6 mt-4 text-3xl font-heading font-bold md:text-4xl lg:text-5xl">
             Transform Your Life in Person
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            These featured events and programs are refreshed live, so the homepage always reflects current admin content.
+            These featured programs are refreshed live, so the homepage always reflects current admin content.
           </p>
         </motion.div>
 
@@ -195,9 +195,9 @@ export const EventsSection = () => {
         </div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center">
-          <Link to="/events">
+          <Link to="/programs">
             <Button variant="goldOutline" size="lg">
-              View All Events
+              View All Programs
               <ArrowRight size={18} />
             </Button>
           </Link>

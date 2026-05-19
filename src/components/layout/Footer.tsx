@@ -5,14 +5,14 @@ import mindArchitectureLogo from "@/assets/mind-architecture-logo.webp";
 const footerLinks = {
   quickLinks: [
     { href: "/about", label: "About" },
-    { href: "/events", label: "Programs" },
-    { href: "/books", label: "Resources" },
-    { href: "/blog", label: "Insights" },
+    { href: "/programs", label: "Programs" },
+    { href: "/books", label: "Books" },
+    { href: "/insights", label: "Insights" },
     { href: "/contact", label: "Contact" },
   ],
   services: [
-    { href: "/events", label: "Resilience Training" },
-    { href: "/events", label: "Corporate Workshops" },
+    { href: "/programs", label: "Resilience Training" },
+    { href: "/programs", label: "Corporate Workshops" },
     { href: "/contact", label: "Consultations" },
     { href: "/membership", label: "Membership" },
   ],

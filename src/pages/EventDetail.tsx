@@ -113,7 +113,7 @@ const EventDetailPage = () => {
       setShowCheckout(false);
       setShowSuccess(true);
       setSearchParams({}, { replace: true });
-      toast.success("Event booking confirmed successfully!");
+      toast.success("Program booking confirmed successfully!");
     };
 
     void verifyEventCheckout();
@@ -143,9 +143,9 @@ const EventDetailPage = () => {
     return (
       <Layout>
         <div className="pt-32 pb-16 text-center">
-          <h1 className="text-2xl font-heading">Event not found</h1>
+          <h1 className="text-2xl font-heading">Program not found</h1>
           <Button variant="goldOutline" className="mt-4" asChild>
-            <Link to="/events">Back to Events</Link>
+            <Link to="/programs">Back to Programs</Link>
           </Button>
         </div>
       </Layout>
@@ -158,7 +158,7 @@ const EventDetailPage = () => {
     "Live guided session and practical event experience",
     "Interactive learning and community engagement",
     "Entry managed directly through the updated backend",
-    "Event details and availability updated in real time",
+    "Program details and availability updated in real time",
   ];
 
   return (
@@ -173,12 +173,12 @@ const EventDetailPage = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-dark via-dark/50 to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-8">
             <div className="container-wide">
-              <Link to="/events" className="mb-4 inline-flex items-center text-cream/70 transition-colors hover:text-cream">
+              <Link to="/programs" className="mb-4 inline-flex items-center text-cream/70 transition-colors hover:text-cream">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Events
+                Back to Programs
               </Link>
               <div className="mb-4 flex flex-wrap gap-2">
-                <Badge className="bg-primary text-primary-foreground">Live Event</Badge>
+                <Badge className="bg-primary text-primary-foreground">Live Program</Badge>
                 {event.is_members_only ? <Badge className="bg-amber-500 text-black">Members Only</Badge> : null}
               </div>
               <h1 className="mb-4 text-3xl font-heading font-bold text-cream md:text-5xl">
@@ -194,10 +194,10 @@ const EventDetailPage = () => {
           <div className="grid gap-12 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <h2 className="mb-6 text-2xl font-heading font-bold">About This Event</h2>
+                <h2 className="mb-6 text-2xl font-heading font-bold">About This Program</h2>
                 <div className="prose prose-lg mb-12 max-w-none dark:prose-invert">
                   <p className="text-muted-foreground">
-                    {event.description || "This event was created from the admin backend and is now visible on the live events page."}
+                    {event.description || "This program was created from the admin dashboard and is now visible on the live programs page."}
                   </p>
                 </div>
 
@@ -280,7 +280,7 @@ const EventDetailPage = () => {
                   )}
                   <Button variant="outline" size="sm" className="w-full">
                     <Share2 className="mr-2 h-4 w-4" />
-                    Share Event
+                    Share Program
                   </Button>
 
                   <EventCheckoutModal
@@ -307,7 +307,7 @@ const EventDetailPage = () => {
                 </div>
 
                 <div className="rounded-2xl border border-border bg-card p-6">
-                  <h3 className="mb-4 font-heading font-bold">Event Details</h3>
+                  <h3 className="mb-4 font-heading font-bold">Program Details</h3>
                   <div className="space-y-4">
                     <div className="flex items-start gap-3">
                       <Calendar className="mt-0.5 h-5 w-5 shrink-0 text-primary" />

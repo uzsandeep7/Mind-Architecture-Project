@@ -146,7 +146,7 @@ const AboutPage = () => {
                     Book Consultation
                   </Button>
                 </Link>
-                <Link to="/events">
+                <Link to="/programs">
                   <Button variant="heroDark">
                     View Programs
                     <ArrowRight size={18} />

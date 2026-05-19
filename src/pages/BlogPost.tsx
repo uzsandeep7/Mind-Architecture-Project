@@ -252,7 +252,7 @@ const BlogPostPage = () => {
         <div className="pt-32 pb-16 text-center">
           <h1 className="text-2xl font-heading">Post not found</h1>
           <Button variant="goldOutline" className="mt-4" asChild>
-            <Link to="/blog">Back to Blog</Link>
+            <Link to="/insights">Back to Insights</Link>
           </Button>
         </div>
       </Layout>
@@ -270,11 +270,11 @@ const BlogPostPage = () => {
             transition={{ duration: 0.6 }}
           >
             <Link
-              to="/blog"
+              to="/insights"
               className="inline-flex items-center text-muted-foreground hover:text-primary transition-colors mb-8"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Blog
+              Back to Insights
             </Link>
 
             <div className="flex flex-wrap gap-2 mb-4">

@@ -318,15 +318,15 @@ const DashboardPage = () => {
 
   const handleResumeEventPayment = async (booking: EventBooking) => {
     if (!booking.event) {
-      toast.error("Event details are no longer available for this booking.");
+      toast.error("Program details are no longer available for this booking.");
       return;
     }
 
     setRetryingEventBookingId(booking.id);
 
     try {
-      const successUrl = `${window.location.origin}/events/${booking.event.id}?success=1&session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = `${window.location.origin}/events/${booking.event.id}?canceled=1`;
+      const successUrl = `${window.location.origin}/programs/${booking.event.id}?success=1&session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/programs/${booking.event.id}?canceled=1`;
 
       const { data, error } = await supabase.functions.invoke("create-event-checkout", {
         body: {
@@ -514,7 +514,7 @@ const DashboardPage = () => {
                 value="bookings"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-yellow-500 data-[state=active]:text-black rounded-full"
               >
-                <Calendar className="w-4 h-4 mr-2" /> Events
+                <Calendar className="w-4 h-4 mr-2" /> Programs
               </TabsTrigger>
               <TabsTrigger
                 value="orders"
@@ -536,7 +536,7 @@ const DashboardPage = () => {
               </TabsTrigger>
             </TabsList>
 
-            {/* Event Bookings */}
+            {/* Program Bookings */}
             <TabsContent value="bookings">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {eventBookings.length > 0 ? (
@@ -549,7 +549,7 @@ const DashboardPage = () => {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
                             <h3 className="font-heading font-bold text-lg text-white">
-                              {booking.event?.title || "Event"}
+                              {booking.event?.title || "Program"}
                             </h3>
                             <p className="text-sm text-white/70 mt-1">
                               {booking.event?.date &&
@@ -591,7 +591,7 @@ const DashboardPage = () => {
                                 variant="outline"
                                 size="sm"
                                 className="h-8 gap-2 px-3 text-destructive"
-                                onClick={() => void deleteUserHistory("event_bookings", booking.id, "Event booking")}
+                                onClick={() => void deleteUserHistory("event_bookings", booking.id, "Program booking")}
                               >
                                 <Trash2 className="h-4 w-4" />
                                 Delete
@@ -613,13 +613,13 @@ const DashboardPage = () => {
                 ) : (
                   <Card className="p-8 text-center bg-white/5 border border-white/10 rounded-xl shadow-md">
                     <Calendar className="w-12 h-12 text-white/60 mx-auto mb-4" />
-                    <p className="text-white/70">No event bookings yet.</p>
+                    <p className="text-white/70">No program bookings yet.</p>
                     <Button
                       variant="gold"
                       className="mt-4"
-                      onClick={() => navigate("/events")}
+                      onClick={() => navigate("/programs")}
                     >
-                      Browse Events
+                      Browse Programs
                     </Button>
                   </Card>
                 )}
