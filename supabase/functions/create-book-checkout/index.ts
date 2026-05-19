@@ -3,16 +3,33 @@ import Stripe from "https://esm.sh/stripe@14.25.0?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-  apiVersion: "2024-06-20",
-});
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!stripeSecretKey) {
+      return new Response(JSON.stringify({ error: "Stripe secret key is not configured for this Supabase function" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!serviceRoleKey) {
+      return new Response(JSON.stringify({ error: "Supabase service role key is not configured for this Supabase function" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2024-06-20",
+    });
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
@@ -25,6 +42,10 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } },
+    );
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      serviceRoleKey,
     );
 
     const {
@@ -47,10 +68,12 @@ serve(async (req) => {
       });
     }
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from("orders")
       .select(`
         id,
+        status,
+        user_id,
         total_amount,
         shipping_address
       `)
@@ -65,10 +88,17 @@ serve(async (req) => {
       });
     }
 
+    if (order.status !== "pending") {
+      return new Response(JSON.stringify({ error: "Only pending orders can be paid" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     let checkoutItems = Array.isArray(items) ? items : [];
 
     if (checkoutItems.length === 0) {
-      const { data: orderItems, error: orderItemsError } = await supabase
+      const { data: orderItems, error: orderItemsError } = await supabaseAdmin
         .from("order_items")
         .select("quantity, price, book:books(title)")
         .eq("order_id", order.id);

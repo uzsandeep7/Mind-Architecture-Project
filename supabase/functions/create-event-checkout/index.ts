@@ -3,10 +3,6 @@ import Stripe from "https://esm.sh/stripe@14.25.0?target=denonext";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-  apiVersion: "2024-06-20",
-});
-
 const TAX_RATE = 0.1;
 
 const roundCurrency = (amount: number) => Math.round(amount * 100) / 100;
@@ -17,6 +13,27 @@ serve(async (req) => {
   }
 
   try {
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!stripeSecretKey) {
+      return new Response(JSON.stringify({ error: "Stripe secret key is not configured for this Supabase function" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!serviceRoleKey) {
+      return new Response(JSON.stringify({ error: "Supabase service role key is not configured for this Supabase function" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
+      apiVersion: "2024-06-20",
+    });
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Missing authorization header" }), {
@@ -32,7 +49,7 @@ serve(async (req) => {
     );
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      serviceRoleKey,
     );
 
     const {
@@ -87,19 +104,19 @@ serve(async (req) => {
     const resolvedSeatCount = existingBooking?.seats ?? seatCount;
 
     const [{ data: event, error: eventError }, { data: profile }] = await Promise.all([
-      supabase
+      supabaseAdmin
         .from("events")
         .select("id, title, price, member_price, available_seats, is_members_only, is_published")
         .eq("id", resolvedEventId)
         .maybeSingle(),
-      supabase
+      supabaseAdmin
         .from("profiles")
         .select("membership_tier")
         .eq("id", user.id)
         .maybeSingle(),
     ]);
 
-    if (eventError || !event || !event.is_published) {
+    if (eventError || !event || (!existingBooking && !event.is_published)) {
       return new Response(JSON.stringify({ error: "Event not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

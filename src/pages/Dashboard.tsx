@@ -78,6 +78,20 @@ const isExpiredPendingOrder = (order: { status: string; created_at: string }) =>
 const getPendingOrderExpiry = (createdAt: string) =>
   new Date(new Date(createdAt).getTime() + PENDING_ORDER_EXPIRY_MS);
 
+const getFunctionErrorMessage = async (error: unknown, fallback: string) => {
+  const context = typeof error === "object" && error !== null && "context" in error ? error.context : null;
+  if (context instanceof Response) {
+    try {
+      const body = await context.clone().json();
+      if (typeof body?.error === "string") return body.error;
+    } catch {
+      return fallback;
+    }
+  }
+
+  return error instanceof Error ? error.message : fallback;
+};
+
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -290,7 +304,7 @@ const DashboardPage = () => {
       });
 
       if (error || !data?.url) {
-        throw error ?? new Error("Failed to reopen Stripe checkout");
+        throw new Error(await getFunctionErrorMessage(error, "Failed to reopen Stripe checkout"));
       }
 
       window.location.href = data.url;
@@ -325,7 +339,7 @@ const DashboardPage = () => {
       });
 
       if (error || !data?.url) {
-        throw error ?? new Error("Failed to reopen Stripe checkout");
+        throw new Error(await getFunctionErrorMessage(error, "Failed to reopen Stripe checkout"));
       }
 
       window.location.href = data.url;
@@ -372,7 +386,7 @@ const DashboardPage = () => {
       });
 
       if (error || !data?.url) {
-        throw error ?? new Error("Failed to reopen Stripe checkout");
+        throw new Error(await getFunctionErrorMessage(error, "Failed to reopen Stripe checkout"));
       }
 
       window.location.href = data.url;
