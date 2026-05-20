@@ -1780,7 +1780,7 @@ const AdminDashboard = () => {
       <section className="section-padding bg-background">
         <div className="container-wide">
           <Tabs defaultValue="events" className="space-y-8">
-            <TabsList className="scrollbar-none flex flex-nowrap justify-start gap-2 overflow-x-auto">
+            <TabsList className="flex flex-nowrap justify-start gap-2 overflow-x-auto">
               <TabsTrigger value="events">
                 <Calendar className="w-4 h-4 mr-1" />
                 Programs
