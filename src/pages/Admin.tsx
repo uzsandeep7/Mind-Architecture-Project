@@ -1812,20 +1812,13 @@ const AdminDashboard = () => {
               <TabsTrigger value="consultations">
                 <MessageSquare className="w-4 h-4 mr-1" />
                 Consultations
-                {consultations.length > 0 ? (
-                  <Badge variant="secondary" className="ml-2">
-                    {consultations.length}
-                  </Badge>
-                ) : null}
               </TabsTrigger>
-              <TabsTrigger value="messages">
+              <TabsTrigger
+                value="messages"
+                className={unreadMessagesCount > 0 ? "animate-pulse ring-1 ring-destructive/60" : undefined}
+              >
                 <Mail className="w-4 h-4 mr-1" />
                 Messages
-                {unreadMessagesCount > 0 ? (
-                  <Badge variant="destructive" className="ml-2">
-                    {unreadMessagesCount}
-                  </Badge>
-                ) : null}
               </TabsTrigger>
             </TabsList>
 
