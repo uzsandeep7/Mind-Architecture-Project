@@ -2,7 +2,7 @@ import { Layout } from "@/components/layout/Layout";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ShoppingCart, Star, Filter, Search, Crown, Lock, Eye } from "lucide-react";
+import { ShoppingCart, Filter, Search, Crown, Lock, Eye } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
@@ -18,8 +18,6 @@ type Book = {
   description: string;
   price: number;
   memberPrice: number;
-  rating: number;
-  reviewCount: number;
   coverUrl: string;
   category: string;
   isPremiumOnly?: boolean;
@@ -60,13 +58,6 @@ const BookCard = ({
     </div>
 
     <div className="flex flex-1 flex-col p-6">
-      <div className="mb-2 flex items-center gap-1">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star key={i} size={14} className={i < Math.floor(book.rating) ? "fill-primary text-primary" : "text-muted"} />
-        ))}
-        <span className="ml-1 text-xs text-muted-foreground">({book.reviewCount} reviews)</span>
-      </div>
-
       <h3 className="mb-1 text-xl font-heading font-bold transition-colors group-hover:text-primary">{book.title}</h3>
       <p className="mb-3 text-sm text-muted-foreground">{book.subtitle}</p>
       <p className="mb-4 min-h-[3.5rem] line-clamp-2 text-sm text-muted-foreground">{book.description}</p>
@@ -148,8 +139,6 @@ const BooksPage = () => {
           description: book.description || "Transformative reading to support your personal and professional growth.",
           price: Number(book.price),
           memberPrice: Number(book.member_price ?? book.price),
-          rating: 4.8,
-          reviewCount: 120,
           coverUrl: book.cover_image_url || "/placeholder.svg",
           category: book.category || "General",
           isPremiumOnly: Boolean(book.is_members_only),
