@@ -30,6 +30,15 @@ type AppRole = Database["public"]["Enums"]["app_role"];
 
 const isValidEmailAddress = (value: string) => EMAIL_PATTERN.test(value.trim());
 
+const getAuthRedirectOrigin = () => {
+  const configuredUrl = import.meta.env.VITE_SITE_URL?.trim();
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/$/, "");
+  }
+
+  return window.location.origin;
+};
+
 // Correct Google "G" (SVG) — works well on dark themes
 const GoogleIcon = ({ className = "h-5 w-5" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 48 48" aria-hidden="true">
@@ -123,7 +132,7 @@ const Auth = () => {
   const handleGoogle = async () => {
     setGoogleLoading(true);
     try {
-      const redirectTo = `${window.location.origin}/`;
+      const redirectTo = `${getAuthRedirectOrigin()}/`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: { redirectTo },

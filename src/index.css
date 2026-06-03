@@ -113,6 +113,22 @@
   p {
     @apply text-[hsl(var(--muted-foreground))] font-medium;
   }
+
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    color-scheme: dark;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator,
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 1;
+    filter: invert(79%) sepia(95%) saturate(1014%) hue-rotate(358deg) brightness(101%) contrast(103%);
+  }
 }
 
 @layer components {
